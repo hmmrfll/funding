@@ -212,7 +212,7 @@ router.post('/update', async (req, res, next) => {
 // 7. Получение топ-N арбитражных возможностей
 router.get('/top-opportunities', async (req, res, next) => {
   try {
-    const { limit = 10 } = req.query;
+    const { limit = 100 } = req.query;
     
     const query = `
       SELECT 
