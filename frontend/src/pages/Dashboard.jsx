@@ -24,12 +24,19 @@ const Dashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
+      console.log('Attempting to fetch from:', `${API_URL}/opportunities`);
       const response = await axios.get(`${API_URL}/opportunities`);
+      console.log('Response received:', response);
       setOpportunities(response.data);
       setLastUpdated(new Date());
       setError(null);
     } catch (err) {
-      console.error('Error fetching data:', err);
+      console.error('Error details:', {
+        message: err.message,
+        code: err.code,
+        response: err.response,
+        request: err.request
+      });
       setError('Failed to load data. Please check your API connection.');
     } finally {
       setLoading(false);
