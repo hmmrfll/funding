@@ -1,0 +1,57 @@
+version: '3.8'
+
+networks:
+  dev:
+
+services:
+
+  backend:
+    build:
+      context: ./backend
+    container_name: backend-funding
+    restart: always
+    ports:
+      - '8034:8034'  # Изменил порт на 8034, как указано в вашем конфиге
+    environment:
+      NODE_ENV: development
+      PORT: 8034
+      DB_HOST: postgres-db-funding
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres  # Добавил пароль (пустой не работает с PostgreSQL)
+      DB_NAME: funding_arbitrage
+      PARADEX_API_URL: https://api.prod.paradex.trade/v1
+      HYPERLIQUID_API_URL: https://api.hyperliquid.xyz/info
+      SCHEDULER_INTERVAL: "*/5 * * * *"
+    depends_on:
+      - db
+    networks:
+      - dev
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - '80:80'
+    networks:
+      - dev
+
+  db:
+    image: postgres:13
+    container_name: postgres-db-funding
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres  # Добавил пароль (пустой не работает с PostgreSQL)
+      POSTGRES_DB: funding_arbitrage
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - dev
+
+volumes:
+  pgdata:
+  data: {}
+  letsencrypt: {}
