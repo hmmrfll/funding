@@ -45,8 +45,10 @@ CREATE INDEX IF NOT EXISTS idx_hyperliquid_asset_time ON hyperliquid_funding_rat
 CREATE TABLE IF NOT EXISTS funding_arbitrage_opportunities (
     id SERIAL PRIMARY KEY,
     asset_id INTEGER REFERENCES assets(id),
-    paradex_rate DECIMAL(16, 14) NOT NULL,
-    hyperliquid_rate DECIMAL(16, 14) NOT NULL,
+    exchange1 VARCHAR(20) NOT NULL DEFAULT 'Paradex',  -- Биржа 1
+    rate1 DECIMAL(16, 14) NOT NULL,                    -- Ставка на бирже 1
+    exchange2 VARCHAR(20) NOT NULL DEFAULT 'HyperLiquid',  -- Биржа 2
+    rate2 DECIMAL(16, 14) NOT NULL,                     -- Ставка на бирже 2
     rate_difference DECIMAL(16, 14) NOT NULL,
     annualized_return DECIMAL(16, 14) NOT NULL,
     recommended_strategy TEXT,
