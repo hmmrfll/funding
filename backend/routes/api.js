@@ -306,13 +306,18 @@ router.get('/top-opportunities', async (req, res, next) => {
 });
 
 // 8. Получение метаданных по активам
+// 8. Получение метаданных по активам
 router.get('/metadata/:symbol', async (req, res, next) => {
   try {
     const { symbol } = req.params;
     
     const query = `
+      WITH asset_data AS (
+        SELECT id FROM assets WHERE symbol = $1
+      )
       SELECT 
         a.symbol,
+        -- Paradex метаданные
         pm.market,
         pm.base_currency,
         pm.quote_currency,
@@ -320,11 +325,17 @@ router.get('/metadata/:symbol', async (req, res, next) => {
         pm.funding_period_hours,
         pm.max_funding_rate,
         pm.interest_rate,
+        -- HyperLiquid метаданные
         hm.sz_decimals,
-        hm.max_leverage
+        hm.max_leverage,
+        -- Binance метаданные
+        bm.adjusted_funding_rate_cap,
+        bm.adjusted_funding_rate_floor,
+        bm.funding_interval_hours
       FROM assets a
       LEFT JOIN paradex_asset_metadata pm ON a.id = pm.asset_id
       LEFT JOIN hyperliquid_asset_metadata hm ON a.id = hm.asset_id
+      LEFT JOIN binance_asset_metadata bm ON a.id = bm.asset_id
       WHERE a.symbol = $1
     `;
     
