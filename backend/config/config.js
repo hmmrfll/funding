@@ -22,6 +22,9 @@ module.exports = {
       baseUrl: process.env.HYPERLIQUID_API_URL || 'https://api.hyperliquid.xyz/info',
       // Другие настройки API HyperLiquid
     },
+    binance: {
+      baseUrl: process.env.BINANCE_API_URL || 'https://fapi.binance.com',
+    },
   },
   scheduler: {
     interval: process.env.SCHEDULER_INTERVAL || '*/5 * * * *', // Каждые 5 минут по умолчанию

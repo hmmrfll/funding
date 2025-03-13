@@ -12,37 +12,50 @@ const ArbitrageChart = ({ historyData, symbol }) => {
     return <div className="text-center py-6">No historical data available for {symbol}</div>;
   }
 
+  // Определяем биржи, для которых есть данные
+  const exchanges = new Set();
+  historyData.forEach(item => {
+    if (item.exchange1) exchanges.add(item.exchange1);
+    if (item.exchange2) exchanges.add(item.exchange2);
+  });
+
   // Готовим данные для графика
   const labels = historyData.map(item => {
     const date = new Date(item.timestamp);
     return format(date, 'HH:mm dd/MM');
   });
 
+  // Создаем наборы данных для каждой биржи
+  const datasets = [];
+  
+  exchanges.forEach(exchange => {
+    const color = getExchangeColor(exchange);
+    datasets.push({
+      label: `${exchange} Rate`,
+      data: historyData.map(item => {
+        // Ищем ставку соответствующей биржи
+        if (item.exchange1 === exchange) return parseFloat(item.rate1) * 100;
+        if (item.exchange2 === exchange) return parseFloat(item.rate2) * 100;
+        return null;
+      }),
+      borderColor: color.border,
+      backgroundColor: color.background,
+      tension: 0.1
+    });
+  });
+
+  // Добавляем данные о разнице ставок
+  datasets.push({
+    label: 'Rate Difference',
+    data: historyData.map(item => parseFloat(item.rate_difference) * 100),
+    borderColor: 'rgb(75, 192, 192)',
+    backgroundColor: 'rgba(75, 192, 192, 0.5)',
+    tension: 0.1
+  });
+
   const data = {
     labels,
-    datasets: [
-      {
-        label: 'Paradex Rate',
-        data: historyData.map(item => parseFloat(item.paradex_rate) * 100), // Конвертируем в проценты
-        borderColor: 'rgb(53, 162, 235)',
-        backgroundColor: 'rgba(53, 162, 235, 0.5)',
-        tension: 0.1
-      },
-      {
-        label: 'HyperLiquid Rate',
-        data: historyData.map(item => parseFloat(item.hyperliquid_rate) * 100), // Конвертируем в проценты
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.5)',
-        tension: 0.1
-      },
-      {
-        label: 'Rate Difference',
-        data: historyData.map(item => parseFloat(item.rate_difference) * 100), // Конвертируем в проценты
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.5)',
-        tension: 0.1
-      }
-    ]
+    datasets
   };
 
   const options = {
@@ -80,5 +93,31 @@ const ArbitrageChart = ({ historyData, symbol }) => {
     </div>
   );
 };
+
+// Вспомогательная функция для определения цвета биржи
+function getExchangeColor(exchange) {
+  switch(exchange) {
+    case 'Paradex':
+      return {
+        border: 'rgb(53, 162, 235)',
+        background: 'rgba(53, 162, 235, 0.5)'
+      };
+    case 'HyperLiquid':
+      return {
+        border: 'rgb(255, 99, 132)',
+        background: 'rgba(255, 99, 132, 0.5)'
+      };
+    case 'Binance':
+      return {
+        border: 'rgb(255, 159, 64)',
+        background: 'rgba(255, 159, 64, 0.5)'
+      };
+    default:
+      return {
+        border: 'rgb(153, 102, 255)',
+        background: 'rgba(153, 102, 255, 0.5)'
+      };
+  }
+}
 
 export default ArbitrageChart;

@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8034/api';
+const API_URL = 'http://91.239.206.123:10902/api';
+// const API_URL = 'http://localhost:8034/api';
 
 const api = {
   // Получение списка всех активов
@@ -22,8 +23,12 @@ const api = {
   },
 
   // Получение исторических данных для актива
-  getAssetHistory: async (symbol, period = 'day') => {
-    const response = await axios.get(`${API_URL}/history/${symbol}?period=${period}`);
+  getAssetHistory: async (symbol, period = 'day', exchanges = []) => {
+    let url = `${API_URL}/history/${symbol}?period=${period}`;
+    if (exchanges && exchanges.length > 0) {
+      url += `&exchanges=${exchanges.join(',')}`;
+    }
+    const response = await axios.get(url);
     return response.data;
   },
 
@@ -43,7 +48,13 @@ const api = {
   updateData: async () => {
     const response = await axios.post(`${API_URL}/update`);
     return response.data;
-  }
+  },
+
+  getAllRates: async (symbol) => {
+    const response = await axios.get(`${API_URL}/all-rates/${symbol}`);
+    return response.data;
+  },
+
 };
 
 export default api;

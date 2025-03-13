@@ -16,10 +16,11 @@ router.get('/opportunities', async (req, res, next) => {
 });
 
 // 2. Получение исторических данных по конкретному активу
+// 2. Получение исторических данных по конкретному активу
 router.get('/history/:symbol', async (req, res, next) => {
   try {
     const { symbol } = req.params;
-    const { period = 'day' } = req.query;
+    const { period = 'day', exchanges } = req.query;
     
     let timeInterval;
     switch(period) {
@@ -33,46 +34,109 @@ router.get('/history/:symbol', async (req, res, next) => {
         timeInterval = 'INTERVAL \'24 hours\'';
     }
     
-    // Получаем исторические данные по арбитражу для конкретного актива
-    // Исправлено: добавлены алиасы таблиц для избежания неоднозначности столбцов
-    const query = `
-      WITH p_data AS (
-        SELECT 
-          asset_id,
-          funding_rate,
-          paradex_funding_rates.created_at,
-          paradex_funding_rates.timestamp
-        FROM paradex_funding_rates
-        JOIN assets ON assets.id = paradex_funding_rates.asset_id
-        WHERE assets.symbol = $1
-        AND paradex_funding_rates.timestamp > NOW() - ${timeInterval}
-        ORDER BY paradex_funding_rates.created_at DESC
+    // Базовый запрос для получения данных о ставках с разных бирж
+    let query = `
+      WITH asset_data AS (
+        SELECT id FROM assets WHERE symbol = $1
       ),
-      h_data AS (
+      time_series AS (
+        SELECT generate_series(
+          date_trunc('hour', NOW() - ${timeInterval}),
+          date_trunc('hour', NOW()),
+          '1 hour'::interval
+        ) AS time_point
+      ),
+      paradex_data AS (
         SELECT 
-          asset_id,
-          funding_rate,
-          hyperliquid_funding_rates.created_at,
-          hyperliquid_funding_rates.timestamp
+          'Paradex' as exchange1,
+          funding_rate as rate1,
+          date_trunc('hour', to_timestamp(created_at / 1000)) as time_point
+        FROM paradex_funding_rates
+        JOIN asset_data ON asset_data.id = paradex_funding_rates.asset_id
+        WHERE paradex_funding_rates.timestamp > NOW() - ${timeInterval}
+      ),
+      hyperliquid_data AS (
+        SELECT 
+          'HyperLiquid' as exchange2,
+          funding_rate as rate2,
+          date_trunc('hour', to_timestamp(created_at / 1000)) as time_point
         FROM hyperliquid_funding_rates
-        JOIN assets ON assets.id = hyperliquid_funding_rates.asset_id
-        WHERE assets.symbol = $1
-        AND hyperliquid_funding_rates.timestamp > NOW() - ${timeInterval}
-        ORDER BY hyperliquid_funding_rates.created_at DESC
+        JOIN asset_data ON asset_data.id = hyperliquid_funding_rates.asset_id
+        WHERE hyperliquid_funding_rates.timestamp > NOW() - ${timeInterval}
+      ),
+      binance_data AS (
+        SELECT 
+          'Binance' as exchange3,
+          funding_rate as rate3,
+          date_trunc('hour', to_timestamp(funding_time / 1000)) as time_point
+        FROM binance_funding_rates
+        JOIN asset_data ON asset_data.id = binance_funding_rates.asset_id
+        WHERE to_timestamp(funding_time / 1000) > NOW() - ${timeInterval}
       )
-      SELECT 
-        a.symbol,
-        p.funding_rate AS paradex_rate,
-        h.funding_rate AS hyperliquid_rate,
-        (p.funding_rate - h.funding_rate) AS rate_difference,
-        (p.funding_rate - h.funding_rate) * 3 * 365 AS annualized_return,
-        EXTRACT(EPOCH FROM p.timestamp) * 1000 AS timestamp
-      FROM assets a
-      JOIN p_data p ON a.id = p.asset_id
-      JOIN h_data h ON a.id = h.asset_id
-      WHERE DATE_TRUNC('hour', p.timestamp) = DATE_TRUNC('hour', h.timestamp)
-      ORDER BY p.timestamp ASC
     `;
+    
+    // Динамически формируем запрос в зависимости от выбранных бирж
+    const exchangesList = exchanges ? exchanges.split(',') : ['Paradex', 'HyperLiquid', 'Binance'];
+    
+    if (exchangesList.length === 2) {
+      const [exchange1, exchange2] = exchangesList;
+      
+      // Формируем динамические части запроса на основе выбранных бирж
+      const getExchangeData = (exchange) => {
+        switch (exchange) {
+          case 'Paradex': return 'paradex_data';
+          case 'HyperLiquid': return 'hyperliquid_data';
+          case 'Binance': return 'binance_data';
+          default: return null;
+        }
+      };
+      
+      const exchange1Data = getExchangeData(exchange1);
+      const exchange2Data = getExchangeData(exchange2);
+      
+      if (exchange1Data && exchange2Data) {
+        query += `
+          SELECT 
+            '${symbol}' as symbol,
+            t.time_point as timestamp,
+            ex1.exchange1,
+            ex1.rate1,
+            ex2.exchange2,
+            ex2.rate2,
+            COALESCE(ex1.rate1, 0) - COALESCE(ex2.rate2, 0) as rate_difference,
+            (COALESCE(ex1.rate1, 0) - COALESCE(ex2.rate2, 0)) * 3 * 365 as annualized_return
+          FROM time_series t
+          LEFT JOIN ${exchange1Data} ex1 ON t.time_point = ex1.time_point
+          LEFT JOIN ${exchange2Data} ex2 ON t.time_point = ex2.time_point
+          WHERE ex1.rate1 IS NOT NULL OR ex2.rate2 IS NOT NULL
+          ORDER BY t.time_point ASC
+        `;
+      } else {
+        return res.status(400).json({ error: 'Invalid exchange selection' });
+      }
+    } else {
+      // Если выбрано 3 биржи или не указаны конкретные биржи, возвращаем данные по всем биржам
+      query += `
+        SELECT 
+          '${symbol}' as symbol,
+          t.time_point as timestamp,
+          p.exchange1,
+          p.rate1,
+          h.exchange2,
+          h.rate2,
+          b.exchange3,
+          b.rate3,
+          COALESCE(p.rate1, 0) - COALESCE(h.rate2, 0) as rate_difference_paradex_hyperliquid,
+          COALESCE(p.rate1, 0) - COALESCE(b.rate3, 0) as rate_difference_paradex_binance,
+          COALESCE(h.rate2, 0) - COALESCE(b.rate3, 0) as rate_difference_hyperliquid_binance
+        FROM time_series t
+        LEFT JOIN paradex_data p ON t.time_point = p.time_point
+        LEFT JOIN hyperliquid_data h ON t.time_point = h.time_point
+        LEFT JOIN binance_data b ON t.time_point = b.time_point
+        WHERE p.rate1 IS NOT NULL OR h.rate2 IS NOT NULL OR b.rate3 IS NOT NULL
+        ORDER BY t.time_point ASC
+      `;
+    }
     
     const result = await db.query(query, [symbol]);
     res.json(result.rows);
@@ -80,6 +144,7 @@ router.get('/history/:symbol', async (req, res, next) => {
     next(error);
   }
 });
+            
 
 // 3. Получение списка доступных активов
 router.get('/assets', async (req, res, next) => {
@@ -105,6 +170,7 @@ router.get('/assets', async (req, res, next) => {
   }
 });
 
+// 4. Получение статистики арбитража
 // 4. Получение статистики арбитража
 router.get('/statistics', async (req, res, next) => {
   try {
@@ -210,6 +276,7 @@ router.post('/update', async (req, res, next) => {
 });
 
 // 7. Получение топ-N арбитражных возможностей
+// 7. Получение топ-N арбитражных возможностей
 router.get('/top-opportunities', async (req, res, next) => {
   try {
     const { limit = 100 } = req.query;
@@ -217,15 +284,17 @@ router.get('/top-opportunities', async (req, res, next) => {
     const query = `
       SELECT 
         a.symbol,
-        fao.paradex_rate,
-        fao.hyperliquid_rate,
-        fao.rate_difference,
-        fao.annualized_return,
-        fao.recommended_strategy,
-        fao.created_at
-      FROM funding_arbitrage_opportunities fao
-      JOIN assets a ON fao.asset_id = a.id
-      ORDER BY ABS(fao.rate_difference) DESC
+        o.exchange1,
+        o.rate1,
+        o.exchange2,
+        o.rate2,
+        o.rate_difference,
+        o.annualized_return,
+        o.recommended_strategy,
+        o.created_at
+      FROM funding_arbitrage_opportunities o
+      JOIN assets a ON o.asset_id = a.id
+      ORDER BY ABS(o.rate_difference) DESC
       LIMIT $1
     `;
     
@@ -301,6 +370,67 @@ router.get('/predicted-rates/:symbol', async (req, res, next) => {
     }, {});
     
     res.json(groupedResults);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Получение ставок фандинга со всех бирж для конкретного актива
+router.get('/all-rates/:symbol', async (req, res, next) => {
+  try {
+    const { symbol } = req.params;
+    
+    const query = `
+      WITH asset_id AS (
+        SELECT id FROM assets WHERE symbol = $1
+      ),
+      paradex_latest AS (
+        SELECT 
+          'Paradex' as exchange,
+          funding_rate,
+          created_at
+        FROM paradex_funding_rates
+        WHERE asset_id = (SELECT id FROM asset_id)
+        ORDER BY created_at DESC
+        LIMIT 1
+      ),
+      hyperliquid_latest AS (
+        SELECT 
+          'HyperLiquid' as exchange,
+          funding_rate,
+          created_at
+        FROM hyperliquid_funding_rates
+        WHERE asset_id = (SELECT id FROM asset_id)
+        ORDER BY created_at DESC
+        LIMIT 1
+      ),
+      binance_latest AS (
+        SELECT 
+          'Binance' as exchange,
+          funding_rate,
+          created_at
+        FROM binance_funding_rates
+        WHERE asset_id = (SELECT id FROM asset_id)
+        ORDER BY created_at DESC
+        LIMIT 1
+      )
+      SELECT * FROM (
+        SELECT * FROM paradex_latest
+        UNION ALL
+        SELECT * FROM hyperliquid_latest
+        UNION ALL
+        SELECT * FROM binance_latest
+      ) rates
+      WHERE funding_rate IS NOT NULL
+    `;
+    
+    const result = await db.query(query, [symbol]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No rates found for this asset' });
+    }
+    
+    res.json(result.rows);
   } catch (error) {
     next(error);
   }

@@ -4,6 +4,7 @@ const config = require('../config/config');
 const arbitrageService = require('../services/arbitrageService');
 const paradexService = require('../services/paradexService');
 const hyperliquidService = require('../services/hyperliquidService');
+const binanceService = require('../services/binanceService');
 
 // Получаем список основных активов из конфигурации
 const TOP_ASSETS = config.topAssets;
@@ -107,29 +108,75 @@ async function updateHyperliquidData() {
  }
 }
 
+async function updateBinanceData() {
+  try {
+    console.log('Обновление данных Binance...');
+    
+    // Получаем информацию о настройках фандинга
+    const fundingInfo = await binanceService.getFundingInfo();
+    console.log(`Получено ${fundingInfo.length} записей о настройках фандинга с Binance`);
+    
+    // Фильтруем активы по списку TOP_ASSETS
+    const filteredFundingInfo = fundingInfo.filter(info => {
+      const baseSymbol = info.symbol.replace(/USDT$|USD$|BUSD$/, '');
+      return TOP_ASSETS.includes(baseSymbol);
+    });
+    
+    console.log(`Отфильтровано ${filteredFundingInfo.length} основных активов`);
+    
+    // Сохраняем метаданные
+    const savedInfoCount = await binanceService.saveFundingInfo(filteredFundingInfo);
+    console.log(`Сохранено ${savedInfoCount} метаданных активов с Binance`);
+    
+    // Получаем последние ставки фандинга для каждого символа
+    let totalSavedFunding = 0;
+    for (const info of filteredFundingInfo) {
+      try {
+        const fundingRates = await binanceService.getFundingRates(info.symbol, 1);
+        
+        if (fundingRates.length > 0) {
+          const savedCount = await binanceService.saveFundingData(fundingRates);
+          totalSavedFunding += savedCount;
+        }
+      } catch (error) {
+        console.error(`Ошибка при получении ставок фандинга для ${info.symbol}:`, error);
+      }
+    }
+    
+    console.log(`Всего сохранено ${totalSavedFunding} записей о фандинге с Binance`);
+    return totalSavedFunding;
+  } catch (error) {
+    console.error('Ошибка при обновлении данных Binance:', error);
+    return 0;
+  }
+}
+
 // Функция обновления данных обеих бирж
 async function updateExchangeData() {
- try {
-   console.log('Начало обновления данных бирж...');
-   
-   // Обновляем данные с обеих бирж параллельно
-   const [paradexResult, hyperliquidResult] = await Promise.all([
-     updateParadexData(),
-     updateHyperliquidData()
-   ]);
-   
-   // Рассчитываем арбитражные возможности
-   if (paradexResult > 0 && hyperliquidResult > 0) {
-     const opportunities = await arbitrageService.calculateArbitrageOpportunities();
-     console.log(`Рассчитано ${opportunities.length} арбитражных возможностей`);
-   }
-   
-   console.log('Обновление данных бирж завершено успешно');
-   return true;
- } catch (error) {
-   console.error('Ошибка при обновлении данных бирж:', error);
-   return false;
- }
+  try {
+    console.log('Начало обновления данных бирж...');
+    
+    // Обновляем данные с трех бирж параллельно
+    const [paradexResult, hyperliquidResult, binanceResult] = await Promise.all([
+      updateParadexData(),
+      updateHyperliquidData(),
+      updateBinanceData()
+    ]);
+    
+    // Рассчитываем арбитражные возможности
+    if ((paradexResult > 0 && hyperliquidResult > 0) || 
+        (paradexResult > 0 && binanceResult > 0) || 
+        (hyperliquidResult > 0 && binanceResult > 0)) {
+      const opportunities = await arbitrageService.calculateArbitrageOpportunities();
+      console.log(`Рассчитано ${opportunities.length} арбитражных возможностей`);
+    }
+    
+    console.log('Обновление данных бирж завершено успешно');
+    return true;
+  } catch (error) {
+    console.error('Ошибка при обновлении данных бирж:', error);
+    return false;
+  }
 }
 
 // Функция инициализации планировщика - восстанавливаем эту функцию
@@ -154,5 +201,6 @@ module.exports = {
   init,
   updateExchangeData, // Экспортируем для возможности ручного запуска
   updateParadexData,
-  updateHyperliquidData
+  updateHyperliquidData,
+  updateBinanceData
 };

@@ -37,8 +37,10 @@ const ArbitrageTable = ({ opportunities }) => {
             <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('symbol')}>
               Symbol {sortField === 'symbol' && (sortDirection === 'asc' ? '↑' : '↓')}
             </th>
-            <th className="px-4 py-2">Paradex Rate</th>
-            <th className="px-4 py-2">HyperLiquid Rate</th>
+            <th className="px-4 py-2">Exchange 1</th>
+            <th className="px-4 py-2">Rate 1</th>
+            <th className="px-4 py-2">Exchange 2</th>
+            <th className="px-4 py-2">Rate 2</th>
             <th className="px-4 py-2 cursor-pointer" onClick={() => handleSort('rate_difference')}>
               Rate Diff {sortField === 'rate_difference' && (sortDirection === 'asc' ? '↑' : '↓')}
             </th>
@@ -49,15 +51,17 @@ const ArbitrageTable = ({ opportunities }) => {
           </tr>
         </thead>
         <tbody>
-          {sortedOpportunities.map((opportunity) => (
-            <tr key={opportunity.symbol} className="hover:bg-gray-50">
+          {sortedOpportunities.map((opportunity, index) => (
+            <tr key={`${opportunity.symbol}-${index}`} className="hover:bg-gray-50">
               <td className="border px-4 py-2 font-medium">
                 <Link to={`/asset/${opportunity.symbol}`} className="text-blue-600 hover:underline">
                   {opportunity.symbol}
                 </Link>
               </td>
-              <td className="border px-4 py-2">{formatPercent(opportunity.paradex_rate)}</td>
-              <td className="border px-4 py-2">{formatPercent(opportunity.hyperliquid_rate)}</td>
+              <td className="border px-4 py-2">{opportunity.exchange1}</td>
+              <td className="border px-4 py-2">{formatPercent(opportunity.rate1)}</td>
+              <td className="border px-4 py-2">{opportunity.exchange2}</td>
+              <td className="border px-4 py-2">{formatPercent(opportunity.rate2)}</td>
               <td className={`border px-4 py-2 ${getColorByValue(opportunity.rate_difference)}`}>
                 {formatPercent(opportunity.rate_difference)}
               </td>

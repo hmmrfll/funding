@@ -4,26 +4,35 @@ import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 
 const API_URL = 'http://91.239.206.123:10902/api';
+// const API_URL = 'http://localhost:8034/api';
+
 
 const AssetPage = () => {
   const { symbol } = useParams();
-  const [assetData, setAssetData] = useState(null);
+  const [allRates, setAllRates] = useState(null);
   const [metadata, setMetadata] = useState(null);
-  const [rates, setRates] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedExchanges, setSelectedExchanges] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // Обновим эндпоинт для получения всех доступных ставок фандинга для актива
         const [metadataRes, ratesRes] = await Promise.all([
           axios.get(`${API_URL}/metadata/${symbol}`),
-          axios.get(`${API_URL}/rates/${symbol}`)
+          axios.get(`${API_URL}/all-rates/${symbol}`) // Предполагаем, что есть новый эндпоинт
         ]);
         
         setMetadata(metadataRes.data);
-        setRates(ratesRes.data);
+        setAllRates(ratesRes.data);
+        
+        // Установим выбранные биржи по умолчанию
+        if (ratesRes.data && ratesRes.data.length > 0) {
+          setSelectedExchanges(ratesRes.data.map(rate => rate.exchange).slice(0, 2));
+        }
+        
         setError(null);
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -68,29 +77,90 @@ const AssetPage = () => {
       
       <h1 className="dashboard-title">{symbol} Funding Details</h1>
       
-      {rates && (
+      {allRates && allRates.length > 0 && (
         <div className="card">
           <h2 className="card-title">Current Funding Rates</h2>
-          <div className="stats-grid">
-            <div className="stats-card">
-              <div className="stats-label">Paradex Rate</div>
-              <div className={`stats-value ${getValueClass(rates.paradex_rate)}`}>
-                {formatPercent(rates.paradex_rate)}
-              </div>
-            </div>
-            <div className="stats-card">
-              <div className="stats-label">HyperLiquid Rate</div>
-              <div className={`stats-value ${getValueClass(rates.hyperliquid_rate)}`}>
-                {formatPercent(rates.hyperliquid_rate)}
-              </div>
-            </div>
-            <div className="stats-card">
-              <div className="stats-label">Rate Difference</div>
-              <div className={`stats-value ${getValueClass(rates.rate_difference)}`}>
-                {formatPercent(rates.rate_difference)}
-              </div>
+          
+          {/* Селектор бирж для сравнения */}
+          <div style={{ marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '16px', marginBottom: '10px', color: '#aaa' }}>Select Exchanges to Compare</h3>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+              {allRates.map(rate => (
+                <label key={rate.exchange} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedExchanges.includes(rate.exchange)}
+                    onChange={() => {
+                      if (selectedExchanges.includes(rate.exchange)) {
+                        setSelectedExchanges(selectedExchanges.filter(ex => ex !== rate.exchange));
+                      } else {
+                        setSelectedExchanges([...selectedExchanges, rate.exchange]);
+                      }
+                    }}
+                    style={{ marginRight: '5px' }}
+                  />
+                  {rate.exchange}
+                </label>
+              ))}
             </div>
           </div>
+          
+          <div className="stats-grid">
+            {allRates.filter(rate => selectedExchanges.includes(rate.exchange)).map(rate => (
+              <div key={rate.exchange} className="stats-card">
+                <div className="stats-label">{rate.exchange} Rate</div>
+                <div className={`stats-value ${getValueClass(rate.funding_rate)}`}>
+                  {formatPercent(rate.funding_rate)}
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Показ разницы ставок, если выбрано 2 биржи */}
+          {selectedExchanges.length === 2 && (
+            <div style={{ marginTop: '20px' }}>
+              <h3 style={{ fontSize: '16px', marginBottom: '10px', color: '#aaa' }}>Arbitrage Opportunity</h3>
+              
+              <div className="stats-grid">
+                <div className="stats-card">
+                  <div className="stats-label">Rate Difference</div>
+                  <div className={`stats-value ${getValueClass(
+                    parseFloat(allRates.find(r => r.exchange === selectedExchanges[0])?.funding_rate) - 
+                    parseFloat(allRates.find(r => r.exchange === selectedExchanges[1])?.funding_rate)
+                  )}`}>
+                    {formatPercent(
+                      parseFloat(allRates.find(r => r.exchange === selectedExchanges[0])?.funding_rate) - 
+                      parseFloat(allRates.find(r => r.exchange === selectedExchanges[1])?.funding_rate)
+                    )}
+                  </div>
+                </div>
+                
+                <div className="stats-card">
+                  <div className="stats-label">Annualized Return</div>
+                  <div className={`stats-value ${getValueClass(
+                    (parseFloat(allRates.find(r => r.exchange === selectedExchanges[0])?.funding_rate) - 
+                    parseFloat(allRates.find(r => r.exchange === selectedExchanges[1])?.funding_rate)) * 3 * 365
+                  )}`}>
+                    {formatPercent(
+                      (parseFloat(allRates.find(r => r.exchange === selectedExchanges[0])?.funding_rate) - 
+                      parseFloat(allRates.find(r => r.exchange === selectedExchanges[1])?.funding_rate)) * 3 * 365
+                    )}
+                  </div>
+                </div>
+                
+                <div className="stats-card">
+                  <div className="stats-label">Recommended Strategy</div>
+                  <div className="stats-value">
+                    {parseFloat(allRates.find(r => r.exchange === selectedExchanges[0])?.funding_rate) > 
+                     parseFloat(allRates.find(r => r.exchange === selectedExchanges[1])?.funding_rate)
+                      ? `Long on ${selectedExchanges[1]}, Short on ${selectedExchanges[0]}`
+                      : `Long on ${selectedExchanges[0]}, Short on ${selectedExchanges[1]}`
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
       

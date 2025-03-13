@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 
 const API_URL = 'http://91.239.206.123:10902/api';
+// const API_URL = 'http://localhost:8034/api';
+
 
 const Dashboard = () => {
   const [opportunities, setOpportunities] = useState([]);
@@ -78,29 +80,27 @@ const Dashboard = () => {
     const sortableOpportunities = [...opportunities];
     if (sortConfig.key) {
       sortableOpportunities.sort((a, b) => {
-        let valueA = parseFloat(a[sortConfig.key]);
-        let valueB = parseFloat(b[sortConfig.key]);
-        
+        // Для символа (строки) используем сравнение строк
         if (sortConfig.key === 'symbol') {
-          valueA = a[sortConfig.key];
-          valueB = b[sortConfig.key];
+          const valueA = a[sortConfig.key];
+          const valueB = b[sortConfig.key];
           return sortConfig.direction === 'asc' 
             ? valueA.localeCompare(valueB)
             : valueB.localeCompare(valueA);
         }
         
-        if (sortConfig.key === 'rate_difference' || sortConfig.key === 'annualized_return') {
-          valueA = Math.abs(valueA);
-          valueB = Math.abs(valueB);
-        }
+        // Для числовых значений - всегда используем обычное сравнение без абсолютных значений
+        const valueA = parseFloat(a[sortConfig.key]);
+        const valueB = parseFloat(b[sortConfig.key]);
         
-        if (valueA < valueB) {
-          return sortConfig.direction === 'asc' ? -1 : 1;
-        }
-        if (valueA > valueB) {
-          return sortConfig.direction === 'asc' ? 1 : -1;
-        }
-        return 0;
+        // Если одно из значений NaN, считаем его "меньшим"
+        if (isNaN(valueA)) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (isNaN(valueB)) return sortConfig.direction === 'asc' ? 1 : -1;
+        
+        // Стандартное сравнение чисел
+        return sortConfig.direction === 'asc' 
+          ? valueA - valueB 
+          : valueB - valueA;
       });
     }
     return sortableOpportunities;
@@ -137,18 +137,10 @@ const Dashboard = () => {
                 {sortConfig.key === 'symbol' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </span>
             </th>
-            <th onClick={() => requestSort('paradex_rate')} style={{ cursor: 'pointer' }}>
-              Paradex Rate
-              <span className="sort-indicator">
-                {sortConfig.key === 'paradex_rate' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </span>
-            </th>
-            <th onClick={() => requestSort('hyperliquid_rate')} style={{ cursor: 'pointer' }}>
-              HyperLiquid Rate
-              <span className="sort-indicator">
-                {sortConfig.key === 'hyperliquid_rate' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </span>
-            </th>
+            <th>Exchange 1</th>
+            <th>Rate 1</th>
+            <th>Exchange 2</th>
+            <th>Rate 2</th>
             <th onClick={() => requestSort('rate_difference')} style={{ cursor: 'pointer' }}>
               Rate Difference
               <span className="sort-indicator">
@@ -165,15 +157,17 @@ const Dashboard = () => {
           </tr>
         </thead>
         <tbody>
-          {sortedOpportunities.map((opp) => (
-            <tr key={opp.symbol}>
+          {sortedOpportunities.map((opp, index) => (
+            <tr key={`${opp.symbol}-${index}`}>
               <td>
                 <Link to={`/asset/${opp.symbol}`}>
                   {opp.symbol}
                 </Link>
               </td>
-              <td className={getValueClass(opp.paradex_rate)}>{formatPercent(opp.paradex_rate)}</td>
-              <td className={getValueClass(opp.hyperliquid_rate)}>{formatPercent(opp.hyperliquid_rate)}</td>
+              <td>{opp.exchange1}</td>
+              <td className={getValueClass(opp.rate1)}>{formatPercent(opp.rate1)}</td>
+              <td>{opp.exchange2}</td>
+              <td className={getValueClass(opp.rate2)}>{formatPercent(opp.rate2)}</td>
               <td className={getValueClass(opp.rate_difference)}>{formatPercent(opp.rate_difference)}</td>
               <td className={getValueClass(opp.annualized_return)}>{formatAnnualReturn(opp.annualized_return)}</td>
               <td>{opp.recommended_strategy}</td>

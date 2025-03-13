@@ -119,3 +119,26 @@ CREATE TABLE IF NOT EXISTS arbitrage_statistics (
     date DATE DEFAULT CURRENT_DATE,
     UNIQUE (asset_id, date)
 );
+
+CREATE TABLE IF NOT EXISTS binance_funding_rates (
+    id SERIAL PRIMARY KEY,
+    asset_id INTEGER REFERENCES assets(id),
+    symbol VARCHAR(20) NOT NULL,
+    funding_rate DECIMAL(16, 14) NOT NULL,
+    funding_time BIGINT,  
+    mark_price DECIMAL(20, 10),
+    created_at BIGINT,  
+    timestamp TIMESTAMP DEFAULT NOW(),
+    UNIQUE (asset_id, symbol, funding_time)
+);
+
+CREATE TABLE IF NOT EXISTS binance_asset_metadata (
+    id SERIAL PRIMARY KEY,
+    asset_id INTEGER REFERENCES assets(id),
+    symbol VARCHAR(20) NOT NULL,
+    adjusted_funding_rate_cap DECIMAL(16, 14),
+    adjusted_funding_rate_floor DECIMAL(16, 14),
+    funding_interval_hours INTEGER,
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE (asset_id, symbol)
+);
