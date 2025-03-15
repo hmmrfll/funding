@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 
-// const API_URL = 'http://91.239.206.123:10902/api';
-const API_URL = 'http://localhost:8034/api';
+const API_URL = 'http://91.239.206.123:10902/api';
+// const API_URL = 'http://localhost:8034/api';
 
 const Dashboard = () => {
   const [opportunities, setOpportunities] = useState([]);
@@ -52,6 +52,46 @@ const Dashboard = () => {
     console.log("Selected comparison exchange:", defaultComparisonExchange);
   }, [opportunities, defaultComparisonExchange]);
 
+  // Добавить в начале, после определения state
+useEffect(() => {
+  // Загрузка сохраненных настроек при инициализации
+  const savedExchange = localStorage.getItem('defaultComparisonExchange');
+  const savedReturnType = localStorage.getItem('returnTypeFilter');
+  const savedSortConfig = JSON.parse(localStorage.getItem('sortConfig'));
+  const savedScrollPosition = localStorage.getItem('scrollPosition');
+  
+  if (savedExchange) setDefaultComparisonExchange(savedExchange);
+  if (savedReturnType) setReturnTypeFilter(savedReturnType);
+  if (savedSortConfig) setSortConfig(savedSortConfig);
+  
+  // Восстановление позиции прокрутки
+  if (savedScrollPosition) {
+    setTimeout(() => {
+      window.scrollTo(0, parseInt(savedScrollPosition));
+    }, 100);
+  }
+}, []);
+
+// Сохранение настроек при их изменении
+useEffect(() => {
+  localStorage.setItem('defaultComparisonExchange', defaultComparisonExchange);
+  localStorage.setItem('returnTypeFilter', returnTypeFilter);
+  localStorage.setItem('sortConfig', JSON.stringify(sortConfig));
+}, [defaultComparisonExchange, returnTypeFilter, sortConfig]);
+
+// Сохранение позиции прокрутки при уходе со страницы
+useEffect(() => {
+  const handleBeforeUnload = () => {
+    localStorage.setItem('scrollPosition', window.scrollY.toString());
+  };
+  
+  window.addEventListener('beforeunload', handleBeforeUnload);
+  
+  return () => {
+    window.removeEventListener('beforeunload', handleBeforeUnload);
+  };
+}, []);
+
   // Динамическое обновление списка доступных бирж
   useEffect(() => {
     if (opportunities && opportunities.length > 0) {
@@ -77,24 +117,56 @@ const Dashboard = () => {
     return () => clearInterval(intervalId);
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.get(`${API_URL}/opportunities`);
-      // Фильтруем данные сразу после получения - только те, где участвует Paradex
-      const paradexOpportunities = response.data.filter(opp => 
-        opp.exchange1 === 'Paradex' || opp.exchange2 === 'Paradex'
-      );
-      setOpportunities(paradexOpportunities);
-      setLastUpdated(new Date());
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching opportunities:', err);
-      setError('Failed to load data. Please check your API connection.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Функция fetchData в Dashboard.jsx
+const fetchData = async () => {
+  setLoading(true);
+  try {
+    const response = await axios.get(`${API_URL}/opportunities`);
+    console.log("Получено с API:", response.data.length, "записей");
+    console.log("Типы бирж:", [...new Set(response.data.map(o => o.exchange1)), ...new Set(response.data.map(o => o.exchange2))]);
+    
+    // Здесь можно увидеть, какие биржи представлены в данных
+    const paradexHyper = response.data.filter(o => 
+      (o.exchange1 === 'Paradex' && o.exchange2 === 'HyperLiquid') || 
+      (o.exchange1 === 'HyperLiquid' && o.exchange2 === 'Paradex')
+    ).length;
+    
+    const paradexBinance = response.data.filter(o => 
+      (o.exchange1 === 'Paradex' && o.exchange2 === 'Binance') || 
+      (o.exchange1 === 'Binance' && o.exchange2 === 'Paradex')
+    ).length;
+    
+    const paradexBybit = response.data.filter(o => 
+      (o.exchange1 === 'Paradex' && o.exchange2 === 'Bybit') || 
+      (o.exchange1 === 'Bybit' && o.exchange2 === 'Paradex')
+    ).length;
+    
+    const paradexDydx = response.data.filter(o => 
+      (o.exchange1 === 'Paradex' && o.exchange2 === 'DYDX') || 
+      (o.exchange1 === 'DYDX' && o.exchange2 === 'Paradex')
+    ).length;
+    
+    console.log("Paradex-HyperLiquid:", paradexHyper);
+    console.log("Paradex-Binance:", paradexBinance);
+    console.log("Paradex-Bybit:", paradexBybit);
+    console.log("Paradex-DYDX:", paradexDydx);
+    
+    // Фильтруем данные - только те, где участвует Paradex
+    const paradexOpportunities = response.data.filter(opp => 
+      opp.exchange1 === 'Paradex' || opp.exchange2 === 'Paradex'
+    );
+    console.log("Отфильтровано с Paradex:", paradexOpportunities.length);
+    
+    setOpportunities(paradexOpportunities);
+    setLastUpdated(new Date());
+    setError(null);
+  } catch (err) {
+    console.error('Error fetching opportunities:', err);
+    setError('Failed to load data. Please check your API connection.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleRefresh = async () => {
     try {
@@ -371,9 +443,21 @@ const Dashboard = () => {
                     <span style={{fontWeight: 'bold'}}>{formatAnnualReturn(opp.annualized_return)}</span>
                   </td>
                   <td>
-                    <Link to={`/asset/${opp.symbol}`} className="action-link">
-                      Details
-                    </Link>
+                  <Link 
+                    to={`/asset/${opp.symbol}?exchange=${otherExchange}`} 
+                    className="action-link"
+                    onClick={() => {
+                      localStorage.setItem('scrollPosition', window.scrollY.toString());
+                      // Если выбрана конкретная биржа, сохраняем её для AssetPage
+                      if (defaultComparisonExchange !== 'all') {
+                        localStorage.setItem('lastSelectedExchange', defaultComparisonExchange);
+                      } else {
+                        localStorage.setItem('lastSelectedExchange', otherExchange);
+                      }
+                    }}
+                  >
+                    Details
+                  </Link>
                   </td>
                 </tr>
               );

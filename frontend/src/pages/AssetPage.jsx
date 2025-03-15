@@ -1,13 +1,18 @@
 // src/pages/AssetPage.jsx
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
 
-// const API_URL = 'http://91.239.206.123:10902/api';
-const API_URL = 'http://localhost:8034/api';
+const API_URL = 'http://91.239.206.123:10902/api';
+// const API_URL = 'http://localhost:8034/api';
 
 const AssetPage = () => {
   const { symbol } = useParams();
+  const [searchParams] = useSearchParams();
+  const preferredExchange = searchParams.get('exchange');
+  const lastSelectedExchange = localStorage.getItem('lastSelectedExchange');
+  const effectiveExchange = preferredExchange || lastSelectedExchange;
+
   const [allRates, setAllRates] = useState(null);
   const [metadata, setMetadata] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -19,28 +24,64 @@ const AssetPage = () => {
       setLoading(true);
       try {
         // Загружаем метаданные и текущие ставки
-        const [metadataRes, ratesRes] = await Promise.all([
+        const [metadataRes, ratesRes, opportunitiesRes] = await Promise.all([
           axios.get(`${API_URL}/metadata/${symbol}`),
-          axios.get(`${API_URL}/all-rates/${symbol}`)
+          axios.get(`${API_URL}/all-rates/${symbol}`),
+          axios.get(`${API_URL}/opportunities`) // Получаем все арбитражные возможности
         ]);
         
         setMetadata(metadataRes.data);
         setAllRates(ratesRes.data);
         
-        // Всегда включаем Paradex, если доступен
         if (ratesRes.data && ratesRes.data.length > 0) {
+          // Проверяем наличие Paradex и предпочтительной биржи
           const paradexAvailable = ratesRes.data.some(rate => rate.exchange === 'Paradex');
-          if (paradexAvailable) {
-            setSelectedExchanges(['Paradex']);
+          const preferredAvailable = preferredExchange && ratesRes.data.some(rate => rate.exchange === preferredExchange);
+          
+          // Если есть предпочтительная биржа из URL и она доступна вместе с Paradex
+          if (paradexAvailable && preferredAvailable) {
+            console.log(`Используем предпочтительную пару: Paradex-${preferredExchange}`);
+            setSelectedExchanges(['Paradex', preferredExchange]);
+          } else {
+            // Если нет предпочтения или оно недоступно, ищем сохраненную пару
+            const savedComparisonExchange = localStorage.getItem('defaultComparisonExchange');
+            const savedExchangeAvailable = savedComparisonExchange && 
+                                          savedComparisonExchange !== 'all' && 
+                                          ratesRes.data.some(rate => rate.exchange === savedComparisonExchange);
             
-            // Если есть другие биржи, выбираем первую
-            const otherExchange = ratesRes.data.find(rate => rate.exchange !== 'Paradex');
-            if (otherExchange) {
-              setSelectedExchanges(['Paradex', otherExchange.exchange]);
+            if (paradexAvailable && savedExchangeAvailable) {
+              console.log(`Используем сохраненную пару: Paradex-${savedComparisonExchange}`);
+              setSelectedExchanges(['Paradex', savedComparisonExchange]);
+            } else {
+              // Если нет сохраненных настроек, ищем лучшую арбитражную возможность
+              const symbolOpportunities = opportunitiesRes.data.filter(opp => opp.symbol === symbol);
+              
+              if (symbolOpportunities.length > 0) {
+                // Сортируем по абсолютному значению разницы ставок
+                symbolOpportunities.sort((a, b) => 
+                  Math.abs(parseFloat(b.rate_difference)) - Math.abs(parseFloat(a.rate_difference))
+                );
+                
+                const bestOpportunity = symbolOpportunities[0];
+                console.log(`Найдена лучшая возможность для ${symbol}: ${bestOpportunity.exchange1}-${bestOpportunity.exchange2} с разницей ${bestOpportunity.rate_difference}`);
+                
+                setSelectedExchanges([bestOpportunity.exchange1, bestOpportunity.exchange2]);
+              } else {
+                // Если нет арбитражных возможностей, используем логику по умолчанию
+                if (paradexAvailable) {
+                  setSelectedExchanges(['Paradex']);
+                  
+                  // Если есть другие биржи, выбираем первую
+                  const otherExchange = ratesRes.data.find(rate => rate.exchange !== 'Paradex');
+                  if (otherExchange) {
+                    setSelectedExchanges(['Paradex', otherExchange.exchange]);
+                  }
+                } else if (ratesRes.data.length >= 1) {
+                  // Если нет Paradex, берем первую доступную биржу
+                  setSelectedExchanges([ratesRes.data[0].exchange]);
+                }
+              }
             }
-          } else if (ratesRes.data.length >= 1) {
-            // Если нет Paradex, берем первую доступную биржу
-            setSelectedExchanges([ratesRes.data[0].exchange]);
           }
         }
         
@@ -52,9 +93,9 @@ const AssetPage = () => {
         setLoading(false);
       }
     };
-
+  
     fetchData();
-  }, [symbol]);
+  }, [symbol, preferredExchange]);
 
   const handleExchangeToggle = (exchange) => {
     if (selectedExchanges.includes(exchange)) {
@@ -117,9 +158,25 @@ const AssetPage = () => {
 
   return (
     <div>
-      <Link to="/" className="back-link">Back to Dashboard</Link>
+      <Link 
+        to="/" 
+        className="back-link"
+        onClick={() => {
+          // Сохраняем позицию скролла для восстановления при возврате
+          localStorage.setItem('scrollPosition', '0');
+        }}
+      >
+        Back to Dashboard
+      </Link>
       
       <h1 className="dashboard-title">{symbol} Funding Details</h1>
+      
+      {/* Индикатор текущей пары бирж */}
+      {selectedExchanges.length === 2 && (
+        <div style={{ marginBottom: '20px', fontSize: '14px', color: '#aaa' }}>
+          Viewing arbitrage opportunity: {selectedExchanges[0]} - {selectedExchanges[1]}
+        </div>
+      )}
       
       {/* Карточки с текущими ставками */}
       {allRates && allRates.length > 0 && (
