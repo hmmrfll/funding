@@ -393,78 +393,91 @@ const fetchData = async () => {
       </div>
       
       {/* Таблица возможностей */}
-      <table>
-        <thead>
-          <tr>
-            <th onClick={() => setSortConfig({ key: 'symbol', direction: sortConfig.key === 'symbol' && sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>
-              Symbol {sortConfig.key === 'symbol' && <span className="sort-indicator">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>}
-            </th>
-            <th>Paradex Rate</th>
-            <th>Other Exchange</th> 
-            <th>Other Rate</th>
-            <th onClick={() => setSortConfig({ key: 'rate_difference', direction: sortConfig.key === 'rate_difference' && sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>
-              Rate Difference {sortConfig.key === 'rate_difference' && <span className="sort-indicator">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>}
-            </th>
-            <th onClick={() => setSortConfig({ key: 'annualized_return', direction: sortConfig.key === 'annualized_return' && sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>
-              Annual Return {sortConfig.key === 'annualized_return' && <span className="sort-indicator">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>}
-            </th>
-            <th>Action</th>
+<table>
+  <thead>
+    <tr>
+      <th onClick={() => setSortConfig({ key: 'symbol', direction: sortConfig.key === 'symbol' && sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>
+        Symbol {sortConfig.key === 'symbol' && <span className="sort-indicator">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>}
+      </th>
+      <th>Paradex Rate</th>
+      <th>Other Exchange</th> 
+      <th>Other Rate</th>
+      <th onClick={() => setSortConfig({ key: 'rate_difference', direction: sortConfig.key === 'rate_difference' && sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>
+        Rate Diff {sortConfig.key === 'rate_difference' && <span className="sort-indicator">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>}
+      </th>
+      <th onClick={() => setSortConfig({ key: 'annualized_return', direction: sortConfig.key === 'annualized_return' && sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>
+        Annual Ret {sortConfig.key === 'annualized_return' && <span className="sort-indicator">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>}
+      </th>
+      <th>Strategy</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {filteredOpportunities.length === 0 ? (
+      <tr>
+        <td colSpan="8" style={{textAlign: 'center', padding: '20px'}}>
+          No matching opportunities found
+        </td>
+      </tr>
+    ) : (
+      filteredOpportunities.map((opp, index) => {
+        // Определяем, где Paradex и другая биржа
+        const isParadexFirst = opp.exchange1 === 'Paradex';
+        const paradexRate = isParadexFirst ? opp.rate1 : opp.rate2;
+        const otherExchange = isParadexFirst ? opp.exchange2 : opp.exchange1;
+        const otherRate = isParadexFirst ? opp.rate2 : opp.rate1;
+        
+        // Создаем краткую стратегию
+        const shortStrategy = (() => {
+          const diff = parseFloat(opp.rate_difference);
+          if (diff > 0) {
+            return `Long ${otherExchange}, Short Paradex`;
+          } else {
+            return `Long Paradex, Short ${otherExchange}`;
+          }
+        })();
+        
+        return (
+          <tr key={`${opp.symbol}-${index}`}>
+            <td>
+              <Link to={`/asset/${opp.symbol}`} style={{fontWeight: 'bold'}}>
+                {opp.symbol}
+              </Link>
+            </td>
+            <td className={getValueClass(paradexRate)}>{formatPercent(paradexRate)}</td>
+            <td>{otherExchange}</td>
+            <td className={getValueClass(otherRate)}>{formatPercent(otherRate)}</td>
+            <td className={getValueClass(opp.rate_difference)}>
+              <span style={{fontWeight: 'bold'}}>{formatPercent(opp.rate_difference)}</span>
+            </td>
+            <td className={getValueClass(opp.annualized_return)}>
+              <span style={{fontWeight: 'bold'}}>{formatAnnualReturn(opp.annualized_return)}</span>
+            </td>
+            <td>
+              <span className={getValueClass(opp.rate_difference)}>{shortStrategy}</span>
+            </td>
+            <td>
+            <Link 
+              to={`/asset/${opp.symbol}?exchange=${otherExchange}`} 
+              className="action-link"
+              onClick={() => {
+                localStorage.setItem('scrollPosition', window.scrollY.toString());
+                if (defaultComparisonExchange !== 'all') {
+                  localStorage.setItem('lastSelectedExchange', defaultComparisonExchange);
+                } else {
+                  localStorage.setItem('lastSelectedExchange', otherExchange);
+                }
+              }}
+            >
+              Details
+            </Link>
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {filteredOpportunities.length === 0 ? (
-            <tr>
-              <td colSpan="7" style={{textAlign: 'center', padding: '20px'}}>
-                No matching opportunities found
-              </td>
-            </tr>
-          ) : (
-            filteredOpportunities.map((opp, index) => {
-              // Определяем, где Paradex и другая биржа
-              const isParadexFirst = opp.exchange1 === 'Paradex';
-              const paradexRate = isParadexFirst ? opp.rate1 : opp.rate2;
-              const otherExchange = isParadexFirst ? opp.exchange2 : opp.exchange1;
-              const otherRate = isParadexFirst ? opp.rate2 : opp.rate1;
-              
-              return (
-                <tr key={`${opp.symbol}-${index}`}>
-                  <td>
-                    <Link to={`/asset/${opp.symbol}`} style={{fontWeight: 'bold'}}>
-                      {opp.symbol}
-                    </Link>
-                  </td>
-                  <td className={getValueClass(paradexRate)}>{formatPercent(paradexRate)}</td>
-                  <td>{otherExchange}</td>
-                  <td className={getValueClass(otherRate)}>{formatPercent(otherRate)}</td>
-                  <td className={getValueClass(opp.rate_difference)}>
-                    <span style={{fontWeight: 'bold'}}>{formatPercent(opp.rate_difference)}</span>
-                  </td>
-                  <td className={getValueClass(opp.annualized_return)}>
-                    <span style={{fontWeight: 'bold'}}>{formatAnnualReturn(opp.annualized_return)}</span>
-                  </td>
-                  <td>
-                  <Link 
-                    to={`/asset/${opp.symbol}?exchange=${otherExchange}`} 
-                    className="action-link"
-                    onClick={() => {
-                      localStorage.setItem('scrollPosition', window.scrollY.toString());
-                      // Если выбрана конкретная биржа, сохраняем её для AssetPage
-                      if (defaultComparisonExchange !== 'all') {
-                        localStorage.setItem('lastSelectedExchange', defaultComparisonExchange);
-                      } else {
-                        localStorage.setItem('lastSelectedExchange', otherExchange);
-                      }
-                    }}
-                  >
-                    Details
-                  </Link>
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
+        );
+      })
+    )}
+  </tbody>
+</table>
     </div>
   );
 };
