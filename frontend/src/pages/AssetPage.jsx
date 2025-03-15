@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 
-const API_URL = 'http://91.239.206.123:10902/api';
-// const API_URL = 'http://localhost:8034/api';
+// const API_URL = 'http://91.239.206.123:10902/api';
+const API_URL = 'http://localhost:8034/api';
 
 const AssetPage = () => {
   const { symbol } = useParams();
@@ -12,24 +12,36 @@ const AssetPage = () => {
   const [metadata, setMetadata] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedExchanges, setSelectedExchanges] = useState([]);
+  const [selectedExchanges, setSelectedExchanges] = useState(['Paradex']);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Обновим эндпоинт для получения всех доступных ставок фандинга для актива
+        // Загружаем метаданные и текущие ставки
         const [metadataRes, ratesRes] = await Promise.all([
           axios.get(`${API_URL}/metadata/${symbol}`),
-          axios.get(`${API_URL}/all-rates/${symbol}`) 
+          axios.get(`${API_URL}/all-rates/${symbol}`)
         ]);
         
         setMetadata(metadataRes.data);
         setAllRates(ratesRes.data);
         
-        // Установим выбранные биржи по умолчанию
+        // Всегда включаем Paradex, если доступен
         if (ratesRes.data && ratesRes.data.length > 0) {
-          setSelectedExchanges(ratesRes.data.map(rate => rate.exchange).slice(0, 2));
+          const paradexAvailable = ratesRes.data.some(rate => rate.exchange === 'Paradex');
+          if (paradexAvailable) {
+            setSelectedExchanges(['Paradex']);
+            
+            // Если есть другие биржи, выбираем первую
+            const otherExchange = ratesRes.data.find(rate => rate.exchange !== 'Paradex');
+            if (otherExchange) {
+              setSelectedExchanges(['Paradex', otherExchange.exchange]);
+            }
+          } else if (ratesRes.data.length >= 1) {
+            // Если нет Paradex, берем первую доступную биржу
+            setSelectedExchanges([ratesRes.data[0].exchange]);
+          }
         }
         
         setError(null);
@@ -44,18 +56,22 @@ const AssetPage = () => {
     fetchData();
   }, [symbol]);
 
-  if (loading) {
-    return <div className="loading">Loading asset data...</div>;
-  }
-
-  if (error) {
-    return (
-      <div>
-        <div className="error">{error}</div>
-        <Link to="/">← Back to Dashboard</Link>
-      </div>
-    );
-  }
+  const handleExchangeToggle = (exchange) => {
+    if (selectedExchanges.includes(exchange)) {
+      // Удаляем биржу из выбранных, но не удаляем если осталась последняя
+      if (selectedExchanges.length > 1) {
+        setSelectedExchanges(selectedExchanges.filter(ex => ex !== exchange));
+      }
+    } else {
+      // Добавляем биржу в выбранные, максимум 2
+      if (selectedExchanges.length < 2) {
+        setSelectedExchanges([...selectedExchanges, exchange]);
+      } else {
+        // Заменяем вторую биржу новой
+        setSelectedExchanges([selectedExchanges[0], exchange]);
+      }
+    }
+  };
 
   // Форматирование процентов
   const formatPercent = (value) => {
@@ -68,107 +84,124 @@ const AssetPage = () => {
     return parseFloat(value) > 0 ? 'positive' : parseFloat(value) < 0 ? 'negative' : '';
   };
 
+  if (loading) {
+    return <div className="loading">Loading asset data...</div>;
+  }
+
+  if (error) {
+    return (
+      <div>
+        <div className="error">{error}</div>
+        <Link to="/" className="back-link">Back to Dashboard</Link>
+      </div>
+    );
+  }
+
+  // Расчет арбитражной возможности, если выбрано 2 биржи
+  const arbitrageOpportunity = selectedExchanges.length === 2 && allRates 
+    ? (() => {
+        const rate1 = allRates.find(r => r.exchange === selectedExchanges[0])?.funding_rate;
+        const rate2 = allRates.find(r => r.exchange === selectedExchanges[1])?.funding_rate;
+        
+        if (!rate1 || !rate2) return null;
+        
+        const rateDiff = parseFloat(rate1) - parseFloat(rate2);
+        const annualReturn = rateDiff * 3 * 365; // 3 раза в день, 365 дней
+        const strategy = rateDiff > 0 
+          ? `Long on ${selectedExchanges[1]}, Short on ${selectedExchanges[0]}` 
+          : `Long on ${selectedExchanges[0]}, Short on ${selectedExchanges[1]}`;
+        
+        return { rateDiff, annualReturn, strategy };
+      })()
+    : null;
+
   return (
     <div>
-      <div style={{ marginBottom: '20px' }}>
-        <Link to="/">← Back to Dashboard</Link>
-      </div>
+      <Link to="/" className="back-link">Back to Dashboard</Link>
       
       <h1 className="dashboard-title">{symbol} Funding Details</h1>
       
+      {/* Карточки с текущими ставками */}
       {allRates && allRates.length > 0 && (
         <div className="card">
           <h2 className="card-title">Current Funding Rates</h2>
           
           {/* Селектор бирж для сравнения */}
           <div style={{ marginBottom: '20px' }}>
-            <h3 style={{ fontSize: '16px', marginBottom: '10px', color: '#aaa' }}>Select Exchanges to Compare</h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+            <span className="filter-label">Select Exchanges to Compare (max 2)</span>
+            <div className="filter-group">
               {allRates.map(rate => (
-                <label key={rate.exchange} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedExchanges.includes(rate.exchange)}
-                    onChange={() => {
-                      if (selectedExchanges.includes(rate.exchange)) {
-                        setSelectedExchanges(selectedExchanges.filter(ex => ex !== rate.exchange));
-                      } else {
-                        setSelectedExchanges([...selectedExchanges, rate.exchange]);
-                      }
-                    }}
-                    style={{ marginRight: '5px' }}
-                  />
+                <button
+                  key={rate.exchange}
+                  onClick={() => handleExchangeToggle(rate.exchange)}
+                  className={`btn btn-secondary ${selectedExchanges.includes(rate.exchange) ? 'active' : ''}`}
+                >
                   {rate.exchange}
-                </label>
+                </button>
               ))}
             </div>
           </div>
           
           <div className="stats-grid">
-            {allRates.filter(rate => selectedExchanges.includes(rate.exchange)).map(rate => (
-              <div key={rate.exchange} className="stats-card">
-                <div className="stats-label">{rate.exchange} Rate</div>
-                <div className={`stats-value ${getValueClass(rate.funding_rate)}`}>
-                  {formatPercent(rate.funding_rate)}
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          {/* Показ разницы ставок, если выбрано 2 биржи */}
-          {selectedExchanges.length === 2 && (
-            <div style={{ marginTop: '20px' }}>
-              <h3 style={{ fontSize: '16px', marginBottom: '10px', color: '#aaa' }}>Arbitrage Opportunity</h3>
+            {selectedExchanges.map(exchange => {
+              const rateData = allRates.find(rate => rate.exchange === exchange);
+              if (!rateData) return null;
               
-              <div className="stats-grid">
+              return (
+                <div key={exchange} className="stats-card">
+                  <div className="stats-label">{exchange} Rate</div>
+                  <div className={`stats-value ${getValueClass(rateData.funding_rate)}`}>
+                    {formatPercent(rateData.funding_rate)}
+                  </div>
+                </div>
+              );
+            })}
+            
+            {/* Показываем арбитражную возможность, если выбрано 2 биржи */}
+            {arbitrageOpportunity && (
+              <>
                 <div className="stats-card">
                   <div className="stats-label">Rate Difference</div>
-                  <div className={`stats-value ${getValueClass(
-                    parseFloat(allRates.find(r => r.exchange === selectedExchanges[0])?.funding_rate) - 
-                    parseFloat(allRates.find(r => r.exchange === selectedExchanges[1])?.funding_rate)
-                  )}`}>
-                    {formatPercent(
-                      parseFloat(allRates.find(r => r.exchange === selectedExchanges[0])?.funding_rate) - 
-                      parseFloat(allRates.find(r => r.exchange === selectedExchanges[1])?.funding_rate)
-                    )}
+                  <div className={`stats-value ${getValueClass(arbitrageOpportunity.rateDiff)}`}>
+                    {formatPercent(arbitrageOpportunity.rateDiff)}
                   </div>
                 </div>
                 
                 <div className="stats-card">
-                  <div className="stats-label">Annualized Return</div>
-                  <div className={`stats-value ${getValueClass(
-                    (parseFloat(allRates.find(r => r.exchange === selectedExchanges[0])?.funding_rate) - 
-                    parseFloat(allRates.find(r => r.exchange === selectedExchanges[1])?.funding_rate)) * 3 * 365
-                  )}`}>
-                    {formatPercent(
-                      (parseFloat(allRates.find(r => r.exchange === selectedExchanges[0])?.funding_rate) - 
-                      parseFloat(allRates.find(r => r.exchange === selectedExchanges[1])?.funding_rate)) * 3 * 365
-                    )}
+                  <div className="stats-label">Annual Return</div>
+                  <div className={`stats-value ${getValueClass(arbitrageOpportunity.annualReturn)}`}>
+                    {formatPercent(arbitrageOpportunity.annualReturn)}
                   </div>
                 </div>
-                
-                <div className="stats-card">
-                  <div className="stats-label">Recommended Strategy</div>
-                  <div className="stats-value">
-                    {parseFloat(allRates.find(r => r.exchange === selectedExchanges[0])?.funding_rate) > 
-                     parseFloat(allRates.find(r => r.exchange === selectedExchanges[1])?.funding_rate)
-                      ? `Long on ${selectedExchanges[1]}, Short on ${selectedExchanges[0]}`
-                      : `Long on ${selectedExchanges[0]}, Short on ${selectedExchanges[1]}`
-                    }
-                  </div>
-                </div>
+              </>
+            )}
+          </div>
+          
+          {/* Рекомендуемая стратегия */}
+          {arbitrageOpportunity && (
+            <div className="strategy-box">
+              <div className="strategy-title">Recommended Strategy</div>
+              <div className="strategy-value">
+                {arbitrageOpportunity.strategy}
+              </div>
+              
+              <div className="strategy-desc">
+                {Math.abs(arbitrageOpportunity.annualReturn) > 0.1 
+                  ? `This strategy could yield approximately ${formatPercent(arbitrageOpportunity.annualReturn)} annually based on current rates.`
+                  : 'The current rate difference is too small for effective arbitrage.'}
               </div>
             </div>
           )}
         </div>
       )}
       
+      {/* Информация об активе */}
       {metadata && (
         <div className="card">
           <h2 className="card-title">Asset Information</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
             <div>
-              <h3 style={{ fontSize: '16px', marginBottom: '10px', color: '#aaa' }}>Paradex Market Details</h3>
+              <h3 className="section-title">Paradex Market Details</h3>
               <table>
                 <tbody>
                   <tr>
@@ -187,14 +220,49 @@ const AssetPage = () => {
                     <td>Settlement Currency</td>
                     <td>{metadata.settlement_currency || 'N/A'}</td>
                   </tr>
+                  <tr>
+                    <td>Funding Period</td>
+                    <td>{metadata.funding_period_hours ? `${metadata.funding_period_hours} hours` : 'N/A'}</td>
+                  </tr>
+                  <tr>
+                    <td>Max Funding Rate</td>
+                    <td>{formatPercent(metadata.max_funding_rate)}</td>
+                  </tr>
                 </tbody>
               </table>
+            </div>
+            
+            <div>
+              <h3 className="section-title">Exchange Parameters</h3>
               
-              {/* Binance метаданные */}
+              {/* HyperLiquid Parameters */}
+              {(metadata.max_leverage || metadata.sz_decimals) && (
+                <div style={{marginBottom: '15px'}}>
+                  <h4 style={{fontSize: '14px', color: '#2196f3', marginBottom: '5px'}}>HyperLiquid</h4>
+                  <table style={{marginBottom: '15px'}}>
+                    <tbody>
+                      {metadata.max_leverage && (
+                        <tr>
+                          <td>Max Leverage</td>
+                          <td>{metadata.max_leverage}x</td>
+                        </tr>
+                      )}
+                      {metadata.sz_decimals !== undefined && (
+                        <tr>
+                          <td>Size Decimals</td>
+                          <td>{metadata.sz_decimals}</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              
+              {/* Binance Parameters */}
               {(metadata.adjusted_funding_rate_cap || metadata.adjusted_funding_rate_floor || metadata.funding_interval_hours) && (
-                <>
-                  <h3 style={{ fontSize: '16px', marginBottom: '10px', marginTop: '20px', color: '#aaa' }}>Binance Parameters</h3>
-                  <table>
+                <div style={{marginBottom: '15px'}}>
+                  <h4 style={{fontSize: '14px', color: '#f0b90b', marginBottom: '5px'}}>Binance</h4>
+                  <table style={{marginBottom: '15px'}}>
                     <tbody>
                       {metadata.funding_interval_hours && (
                         <tr>
@@ -204,111 +272,81 @@ const AssetPage = () => {
                       )}
                       {metadata.adjusted_funding_rate_cap && (
                         <tr>
-                          <td>Max Funding Rate</td>
+                          <td>Max Rate</td>
                           <td>{formatPercent(metadata.adjusted_funding_rate_cap)}</td>
                         </tr>
                       )}
                       {metadata.adjusted_funding_rate_floor && (
                         <tr>
-                          <td>Min Funding Rate</td>
+                          <td>Min Rate</td>
                           <td>{formatPercent(metadata.adjusted_funding_rate_floor)}</td>
                         </tr>
                       )}
                     </tbody>
                   </table>
-                </>
+                </div>
+              )}
+              
+              {/* Bybit Parameters */}
+              {metadata.bybit_category && (
+                <div style={{marginBottom: '15px'}}>
+                  <h4 style={{fontSize: '14px', color: '#f7a600', marginBottom: '5px'}}>Bybit</h4>
+                  <table style={{marginBottom: '15px'}}>
+                    <tbody>
+                      <tr>
+                        <td>Category</td>
+                        <td>{metadata.bybit_category}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              
+              {/* DYDX Parameters */}
+              {metadata.dydx_ticker && (
+                <div>
+                  <h4 style={{fontSize: '14px', color: '#6966ff', marginBottom: '5px'}}>DYDX</h4>
+                  <table>
+                    <tbody>
+                      <tr>
+                        <td>Ticker</td>
+                        <td>{metadata.dydx_ticker}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
-            <div>
-              <h3 style={{ fontSize: '16px', marginBottom: '10px', color: '#aaa' }}>Funding Parameters</h3>
-              <table>
-                <tbody>
-                  <tr>
-                    <td>Funding Period</td>
-                    <td>{metadata.funding_period_hours ? `${metadata.funding_period_hours} hours` : 'N/A'}</td>
-                  </tr>
-                  <tr>
-                    <td>Max Funding Rate</td>
-                    <td>{formatPercent(metadata.max_funding_rate)}</td>
-                  </tr>
-                  <tr>
-                    <td>Interest Rate</td>
-                    <td>{formatPercent(metadata.interest_rate)}</td>
-                  </tr>
-                </tbody>
-              </table>
-              
-              <h3 style={{ fontSize: '16px', marginBottom: '10px', marginTop: '20px', color: '#aaa' }}>HyperLiquid Parameters</h3>
-              <table>
-                <tbody>
-                  <tr>
-                    <td>Max Leverage</td>
-                    <td>{metadata.max_leverage ? `${metadata.max_leverage}x` : 'N/A'}</td>
-                  </tr>
-                  {metadata.sz_decimals !== undefined && (
-                    <tr>
-                      <td>Size Decimals</td>
-                      <td>{metadata.sz_decimals}</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
           </div>
         </div>
       )}
       
-      {/* График исторических данных */}
-      {allRates && allRates.length > 0 && (
-        <div className="card" style={{ marginTop: '20px' }}>
-          <h2 className="card-title">Historical Funding Rates</h2>
-          <div style={{ fontSize: '14px', color: '#aaa', marginBottom: '20px', textAlign: 'center' }}>
-            Coming soon: Chart with historical funding rates for {symbol}
-          </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px 0' }}>
-            <button 
-              onClick={() => alert('Историческая функциональность будет добавлена в следующих обновлениях')}
-              style={{
-                background: '#2196f3',
-                color: 'white',
-                border: 'none',
-                padding: '10px 20px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              Load Historical Data
-            </button>
-          </div>
-        </div>
-      )}
-      
-      {/* Раздел торговой идеи */}
-      {allRates && allRates.length > 0 && selectedExchanges.length === 2 && (
-        <div className="card" style={{ marginTop: '20px' }}>
+      {/* Торговые рекомендации */}
+      {arbitrageOpportunity && (
+        <div className="card">
           <h2 className="card-title">Trading Insights</h2>
           
-          <div style={{ padding: '10px', backgroundColor: '#1a1a1a', borderRadius: '4px', marginBottom: '20px' }}>
+          <div style={{
+            padding: '15px',
+            background: '#1a1a1a',
+            borderRadius: '4px',
+            marginBottom: '15px'
+          }}>
             {(() => {
-              const rate1 = parseFloat(allRates.find(r => r.exchange === selectedExchanges[0])?.funding_rate);
-              const rate2 = parseFloat(allRates.find(r => r.exchange === selectedExchanges[1])?.funding_rate);
-              const diff = rate1 - rate2;
-              const annualReturn = diff * 3 * 365 * 100; // в процентах
+              const absReturn = Math.abs(arbitrageOpportunity.annualReturn);
               
-              if (Math.abs(annualReturn) < 10) {
-                return <p>Текущая разница в ставках фандинга между {selectedExchanges[0]} и {selectedExchanges[1]} невелика. Годовая доходность от арбитража составляет всего {annualReturn.toFixed(2)}%, что может быть недостаточно с учетом комиссий и рисков.</p>;
-              } else if (Math.abs(annualReturn) < 30) {
-                return <p>Есть умеренная возможность для фандинг-арбитража между {selectedExchanges[0]} и {selectedExchanges[1]}. При годовой доходности {annualReturn.toFixed(2)}% стратегия может быть прибыльной при эффективном управлении рисками.</p>;
+              if (absReturn < 0.1) {
+                return <p>The current difference in funding rates between {selectedExchanges[0]} and {selectedExchanges[1]} is minimal. The annualized return from arbitrage is only {formatPercent(arbitrageOpportunity.annualReturn)}, which may not be sufficient considering fees and risks.</p>;
+              } else if (absReturn < 0.3) {
+                return <p>There is a moderate opportunity for funding arbitrage between {selectedExchanges[0]} and {selectedExchanges[1]}. With an annualized return of {formatPercent(arbitrageOpportunity.annualReturn)}, the strategy could be profitable with effective risk management.</p>;
               } else {
-                return <p>Обнаружена значительная возможность для фандинг-арбитража! Разница в ставках фандинга между {selectedExchanges[0]} и {selectedExchanges[1]} дает потенциальную годовую доходность {annualReturn.toFixed(2)}%. Рекомендуется рассмотреть {rate1 > rate2 ? `длинную позицию на ${selectedExchanges[1]} и короткую на ${selectedExchanges[0]}` : `длинную позицию на ${selectedExchanges[0]} и короткую на ${selectedExchanges[1]}`}.</p>;
+                return <p>A significant funding arbitrage opportunity has been detected! The difference in funding rates between {selectedExchanges[0]} and {selectedExchanges[1]} provides a potential annualized return of {formatPercent(arbitrageOpportunity.annualReturn)}. Consider {arbitrageOpportunity.strategy}.</p>;
               }
             })()}
           </div>
           
-          <div style={{ fontSize: '12px', color: '#888' }}>
-            <p><strong>Примечание:</strong> Эта информация предоставляется только в образовательных целях и не является финансовым советом. Всегда проводите собственное исследование перед совершением любых торговых операций.</p>
+          <div style={{fontSize: '12px', color: '#888'}}>
+            <p><strong>Note:</strong> This information is provided for educational purposes only and is not financial advice. Always conduct your own research before making any trading decisions.</p>
           </div>
         </div>
       )}

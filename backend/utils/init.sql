@@ -144,3 +144,51 @@ CREATE TABLE IF NOT EXISTS binance_asset_metadata (
     updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE (asset_id, symbol)
 );
+
+-- Таблица ставок фандинга Bybit
+CREATE TABLE IF NOT EXISTS bybit_funding_rates (
+    id SERIAL PRIMARY KEY,
+    asset_id INTEGER REFERENCES assets(id),
+    symbol VARCHAR(20) NOT NULL,
+    funding_rate DECIMAL(16, 14) NOT NULL,
+    funding_time BIGINT,  
+    category VARCHAR(10) NOT NULL, -- 'linear' или 'inverse'
+    created_at BIGINT,  
+    timestamp TIMESTAMP DEFAULT NOW(),
+    UNIQUE (asset_id, symbol, funding_time)
+);
+
+CREATE INDEX IF NOT EXISTS idx_bybit_asset_time ON bybit_funding_rates(asset_id, funding_time);
+
+CREATE TABLE IF NOT EXISTS bybit_asset_metadata (
+    id SERIAL PRIMARY KEY,
+    asset_id INTEGER REFERENCES assets(id),
+    symbol VARCHAR(20) NOT NULL,
+    category VARCHAR(10) NOT NULL, 
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE (asset_id, symbol)
+);
+
+-- Таблица ставок фандинга DYDX
+CREATE TABLE IF NOT EXISTS dydx_funding_rates (
+    id SERIAL PRIMARY KEY,
+    asset_id INTEGER REFERENCES assets(id),
+    ticker VARCHAR(20) NOT NULL,
+    funding_rate DECIMAL(16, 14) NOT NULL,
+    price DECIMAL(20, 10),
+    effective_at BIGINT,
+    effective_at_height VARCHAR(30),
+    created_at BIGINT,
+    timestamp TIMESTAMP DEFAULT NOW(),
+    UNIQUE (asset_id, ticker, effective_at)
+);
+
+CREATE INDEX IF NOT EXISTS idx_dydx_asset_time ON dydx_funding_rates(asset_id, effective_at);
+
+CREATE TABLE IF NOT EXISTS dydx_asset_metadata (
+    id SERIAL PRIMARY KEY,
+    asset_id INTEGER REFERENCES assets(id),
+    ticker VARCHAR(20) NOT NULL,
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE (asset_id, ticker)
+);

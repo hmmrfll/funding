@@ -17,6 +17,9 @@ function App() {
             <Route path="/asset/:symbol" element={<AssetPage />} />
           </Routes>
         </main>
+        <footer className="footer">
+          &copy; {new Date().getFullYear()} Funding Arbitrage Dashboard | Data updates every 5 minutes
+        </footer>
       </div>
     </Router>
   );

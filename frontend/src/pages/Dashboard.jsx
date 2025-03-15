@@ -1,11 +1,11 @@
-// src/pages/Dashboard.jsx
+// Обновленная версия Dashboard.jsx с фокусом на Paradex
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 
-const API_URL = 'http://91.239.206.123:10902/api';
-// const API_URL = 'http://localhost:8034/api';
-
+// const API_URL = 'http://91.239.206.123:10902/api';
+const API_URL = 'http://localhost:8034/api';
 
 const Dashboard = () => {
   const [opportunities, setOpportunities] = useState([]);
@@ -13,6 +13,60 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'annualized_return', direction: 'desc' });
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [returnTypeFilter, setReturnTypeFilter] = useState('all'); // 'all', 'positive', 'negative', 'absolute'
+  const [defaultComparisonExchange, setDefaultComparisonExchange] = useState('all');
+  const [availableExchanges, setAvailableExchanges] = useState([]); // Будет заполнен динамически
+
+  // Диагностический эффект для логирования состояния данных
+  useEffect(() => {
+    if (opportunities && opportunities.length > 0) {
+      console.log("Total opportunities in DB:", opportunities.length);
+      
+      // Анализ наличия данных по биржам
+      const paradexCount = opportunities.filter(opp => 
+        opp.exchange1 === 'Paradex' || opp.exchange2 === 'Paradex'
+      ).length;
+      
+      // Проверяем, какие биржи взаимодействуют с Paradex
+      const hyperliquidCount = opportunities.filter(opp => 
+        (opp.exchange1 === 'Paradex' && opp.exchange2 === 'HyperLiquid') || 
+        (opp.exchange1 === 'HyperLiquid' && opp.exchange2 === 'Paradex')
+      ).length;
+      
+      const bybitCount = opportunities.filter(opp => 
+        (opp.exchange1 === 'Paradex' && opp.exchange2 === 'Bybit') || 
+        (opp.exchange1 === 'Bybit' && opp.exchange2 === 'Paradex')
+      ).length;
+      
+      const dydxCount = opportunities.filter(opp => 
+        (opp.exchange1 === 'Paradex' && opp.exchange2 === 'DYDX') || 
+        (opp.exchange1 === 'DYDX' && opp.exchange2 === 'Paradex')
+      ).length;
+      
+      console.log("Paradex count:", paradexCount);
+      console.log("Paradex + HyperLiquid count:", hyperliquidCount);
+      console.log("Paradex + Bybit count:", bybitCount);
+      console.log("Paradex + DYDX count:", dydxCount);
+    }
+    
+    console.log("Selected comparison exchange:", defaultComparisonExchange);
+  }, [opportunities, defaultComparisonExchange]);
+
+  // Динамическое обновление списка доступных бирж
+  useEffect(() => {
+    if (opportunities && opportunities.length > 0) {
+      // Получаем все уникальные биржи, которые имеют арбитражные возможности с Paradex
+      const uniqueExchanges = [...new Set(
+        opportunities
+          .filter(opp => opp.exchange1 === 'Paradex' || opp.exchange2 === 'Paradex')
+          .map(opp => opp.exchange1 === 'Paradex' ? opp.exchange2 : opp.exchange1)
+      )];
+      
+      if (uniqueExchanges.length > 0) {
+        setAvailableExchanges(uniqueExchanges);
+      }
+    }
+  }, [opportunities]);
 
   useEffect(() => {
     fetchData();
@@ -26,19 +80,16 @@ const Dashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      console.log('Attempting to fetch from:', `${API_URL}/opportunities`);
       const response = await axios.get(`${API_URL}/opportunities`);
-      console.log('Response received:', response);
-      setOpportunities(response.data);
+      // Фильтруем данные сразу после получения - только те, где участвует Paradex
+      const paradexOpportunities = response.data.filter(opp => 
+        opp.exchange1 === 'Paradex' || opp.exchange2 === 'Paradex'
+      );
+      setOpportunities(paradexOpportunities);
       setLastUpdated(new Date());
       setError(null);
     } catch (err) {
-      console.error('Error details:', {
-        message: err.message,
-        code: err.code,
-        response: err.response,
-        request: err.request
-      });
+      console.error('Error fetching opportunities:', err);
       setError('Failed to load data. Please check your API connection.');
     } finally {
       setLoading(false);
@@ -52,16 +103,9 @@ const Dashboard = () => {
       await fetchData();
     } catch (err) {
       setError('Failed to update data. Please try again later.');
+    } finally {
       setLoading(false);
     }
-  };
-
-  const requestSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
   };
 
   const formatPercent = (value) => {
@@ -76,35 +120,54 @@ const Dashboard = () => {
     return parseFloat(value) > 0 ? 'positive' : parseFloat(value) < 0 ? 'negative' : '';
   };
 
-  const sortedOpportunities = React.useMemo(() => {
-    const sortableOpportunities = [...opportunities];
-    if (sortConfig.key) {
-      sortableOpportunities.sort((a, b) => {
-        // Для символа (строки) используем сравнение строк
-        if (sortConfig.key === 'symbol') {
-          const valueA = a[sortConfig.key];
-          const valueB = b[sortConfig.key];
-          return sortConfig.direction === 'asc' 
-            ? valueA.localeCompare(valueB)
-            : valueB.localeCompare(valueA);
-        }
-        
-        // Для числовых значений - всегда используем обычное сравнение без абсолютных значений
-        const valueA = parseFloat(a[sortConfig.key]);
-        const valueB = parseFloat(b[sortConfig.key]);
-        
-        // Если одно из значений NaN, считаем его "меньшим"
-        if (isNaN(valueA)) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (isNaN(valueB)) return sortConfig.direction === 'asc' ? 1 : -1;
-        
-        // Стандартное сравнение чисел
+  // Фильтрация и сортировка возможностей
+  const filteredOpportunities = React.useMemo(() => {
+    let filtered = [...opportunities];
+    
+    // Проверим, есть ли данные вообще
+    if (filtered.length === 0) {
+      return [];
+    }
+    
+    // Если выбрана конкретная биржа для сравнения с Paradex (и не "all")
+    if (defaultComparisonExchange !== 'all') {
+      filtered = filtered.filter(opp => 
+        (opp.exchange1 === 'Paradex' && opp.exchange2 === defaultComparisonExchange) || 
+        (opp.exchange1 === defaultComparisonExchange && opp.exchange2 === 'Paradex')
+      );
+    }
+    
+    // Добавим фильтрацию по типу доходности
+    if (returnTypeFilter === 'positive') {
+      filtered = filtered.filter(opp => parseFloat(opp.annualized_return) > 0);
+    } else if (returnTypeFilter === 'negative') {
+      filtered = filtered.filter(opp => parseFloat(opp.annualized_return) < 0);
+    }
+    
+    // Сортировка с учетом типа доходности
+    filtered.sort((a, b) => {
+      if (sortConfig.key === 'symbol') {
+        return sortConfig.direction === 'asc' 
+          ? a.symbol.localeCompare(b.symbol)
+          : b.symbol.localeCompare(a.symbol);
+      }
+      
+      const valueA = parseFloat(a[sortConfig.key]);
+      const valueB = parseFloat(b[sortConfig.key]);
+      
+      if (returnTypeFilter === 'absolute' && (sortConfig.key === 'rate_difference' || sortConfig.key === 'annualized_return')) {
+        return sortConfig.direction === 'asc' 
+          ? Math.abs(valueA) - Math.abs(valueB) 
+          : Math.abs(valueB) - Math.abs(valueA);
+      } else {
         return sortConfig.direction === 'asc' 
           ? valueA - valueB 
           : valueB - valueA;
-      });
-    }
-    return sortableOpportunities;
-  }, [opportunities, sortConfig]);
+      }
+    });
+    
+    return filtered;
+  }, [opportunities, defaultComparisonExchange, returnTypeFilter, sortConfig]);
 
   if (loading && opportunities.length === 0) {
     return <div className="loading">Loading data...</div>;
@@ -113,14 +176,14 @@ const Dashboard = () => {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h2 className="dashboard-title">Arbitrage Opportunities</h2>
+        <h2 className="dashboard-title">Funding Arbitrage Dashboard</h2>
         <div>
           {lastUpdated && (
             <span style={{ marginRight: '15px', color: '#aaa', fontSize: '14px' }}>
               Last updated: {lastUpdated.toLocaleTimeString()}
             </span>
           )}
-          <button onClick={handleRefresh} className="refresh-button" disabled={loading}>
+          <button onClick={handleRefresh} className="btn" disabled={loading}>
             {loading ? 'Refreshing...' : 'Refresh Data'}
           </button>
         </div>
@@ -128,51 +191,194 @@ const Dashboard = () => {
       
       {error && <div className="error">{error}</div>}
       
+      {/* Параметры и фильтры */}
+      <div className="card">
+        <h3 className="card-title">Filter Options</h3>
+        
+        <div style={{marginBottom: '15px'}}>
+          <span className="filter-label">Compare Paradex with:</span>
+          <div className="filter-group">
+            <button
+              onClick={() => setDefaultComparisonExchange('all')}
+              className={`btn btn-secondary ${defaultComparisonExchange === 'all' ? 'active' : ''}`}
+            >
+              All Exchanges
+            </button>
+            {availableExchanges.map(exchange => (
+              <button
+                key={exchange}
+                onClick={() => setDefaultComparisonExchange(exchange)}
+                className={`btn btn-secondary ${defaultComparisonExchange === exchange ? 'active' : ''}`}
+              >
+                {exchange}
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        {/* Фильтр для типа доходности */}
+        <div style={{marginBottom: '15px'}}>
+          <span className="filter-label">Return Type:</span>
+          <div className="filter-group">
+            <button
+              onClick={() => setReturnTypeFilter('all')}
+              className={`btn btn-secondary ${returnTypeFilter === 'all' ? 'active' : ''}`}
+            >
+              All Returns
+            </button>
+            <button
+              onClick={() => setReturnTypeFilter('positive')}
+              className={`btn btn-secondary ${returnTypeFilter === 'positive' ? 'active' : ''}`}
+            >
+              Positive Only
+            </button>
+            <button
+              onClick={() => setReturnTypeFilter('negative')}
+              className={`btn btn-secondary ${returnTypeFilter === 'negative' ? 'active' : ''}`}
+            >
+              Negative Only
+            </button>
+            <button
+              onClick={() => setReturnTypeFilter('absolute')}
+              className={`btn btn-secondary ${returnTypeFilter === 'absolute' ? 'active' : ''}`}
+            >
+              Absolute Value
+            </button>
+          </div>
+        </div>
+        
+        <div>
+          <span className="filter-label">Sort by:</span>
+          <div className="filter-group">
+            <button
+              onClick={() => setSortConfig({ 
+                key: 'annualized_return', 
+                direction: sortConfig.key === 'annualized_return' && sortConfig.direction === 'desc' ? 'asc' : 'desc' 
+              })}
+              className={`btn btn-secondary ${sortConfig.key === 'annualized_return' ? 'active' : ''}`}
+            >
+              Annual Return {sortConfig.key === 'annualized_return' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+            </button>
+            <button
+              onClick={() => setSortConfig({ 
+                key: 'rate_difference', 
+                direction: sortConfig.key === 'rate_difference' && sortConfig.direction === 'desc' ? 'asc' : 'desc' 
+              })}
+              className={`btn btn-secondary ${sortConfig.key === 'rate_difference' ? 'active' : ''}`}
+            >
+              Rate Difference {sortConfig.key === 'rate_difference' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+            </button>
+            <button
+              onClick={() => setSortConfig({ 
+                key: 'symbol', 
+                direction: sortConfig.key === 'symbol' && sortConfig.direction === 'asc' ? 'desc' : 'asc' 
+              })}
+              className={`btn btn-secondary ${sortConfig.key === 'symbol' ? 'active' : ''}`}
+            >
+              Symbol {sortConfig.key === 'symbol' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      {/* Статистика */}
+      <div className="stats-grid">
+        <div className="stats-card">
+          <div className="stats-label">Total Opportunities</div>
+          <div className="stats-value">{filteredOpportunities.length}</div>
+        </div>
+        
+        <div className="stats-card">
+          <div className="stats-label">Average Annual Return</div>
+          <div className={`stats-value ${getValueClass(
+            filteredOpportunities.length > 0 
+              ? filteredOpportunities.reduce((sum, opp) => sum + parseFloat(opp.annualized_return), 0) / filteredOpportunities.length
+              : 0
+          )}`}>
+            {filteredOpportunities.length > 0 
+              ? formatAnnualReturn(filteredOpportunities.reduce((sum, opp) => sum + parseFloat(opp.annualized_return), 0) / filteredOpportunities.length)
+              : 'N/A'}
+          </div>
+        </div>
+        
+        <div className="stats-card">
+          <div className="stats-label">Best Opportunity</div>
+          <div className="stats-value positive">
+            {filteredOpportunities.length > 0 
+              ? formatAnnualReturn(Math.max(...filteredOpportunities.map(o => parseFloat(o.annualized_return))))
+              : 'N/A'}
+          </div>
+        </div>
+        
+        <div className="stats-card">
+          <div className="stats-label">Worst Opportunity</div>
+          <div className="stats-value negative">
+            {filteredOpportunities.length > 0 
+              ? formatAnnualReturn(Math.min(...filteredOpportunities.map(o => parseFloat(o.annualized_return))))
+              : 'N/A'}
+          </div>
+        </div>
+      </div>
+      
+      {/* Таблица возможностей */}
       <table>
         <thead>
           <tr>
-            <th onClick={() => requestSort('symbol')} style={{ cursor: 'pointer' }}>
-              Symbol 
-              <span className="sort-indicator">
-                {sortConfig.key === 'symbol' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </span>
+            <th onClick={() => setSortConfig({ key: 'symbol', direction: sortConfig.key === 'symbol' && sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>
+              Symbol {sortConfig.key === 'symbol' && <span className="sort-indicator">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>}
             </th>
-            <th>Exchange 1</th>
-            <th>Rate 1</th>
-            <th>Exchange 2</th>
-            <th>Rate 2</th>
-            <th onClick={() => requestSort('rate_difference')} style={{ cursor: 'pointer' }}>
-              Rate Difference
-              <span className="sort-indicator">
-                {sortConfig.key === 'rate_difference' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </span>
+            <th>Paradex Rate</th>
+            <th>Other Exchange</th> 
+            <th>Other Rate</th>
+            <th onClick={() => setSortConfig({ key: 'rate_difference', direction: sortConfig.key === 'rate_difference' && sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>
+              Rate Difference {sortConfig.key === 'rate_difference' && <span className="sort-indicator">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>}
             </th>
-            <th onClick={() => requestSort('annualized_return')} style={{ cursor: 'pointer' }}>
-              Annualized Return
-              <span className="sort-indicator">
-                {sortConfig.key === 'annualized_return' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-              </span>
+            <th onClick={() => setSortConfig({ key: 'annualized_return', direction: sortConfig.key === 'annualized_return' && sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>
+              Annual Return {sortConfig.key === 'annualized_return' && <span className="sort-indicator">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>}
             </th>
-            <th>Strategy</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
-          {sortedOpportunities.map((opp, index) => (
-            <tr key={`${opp.symbol}-${index}`}>
-              <td>
-                <Link to={`/asset/${opp.symbol}`}>
-                  {opp.symbol}
-                </Link>
+          {filteredOpportunities.length === 0 ? (
+            <tr>
+              <td colSpan="7" style={{textAlign: 'center', padding: '20px'}}>
+                No matching opportunities found
               </td>
-              <td>{opp.exchange1}</td>
-              <td className={getValueClass(opp.rate1)}>{formatPercent(opp.rate1)}</td>
-              <td>{opp.exchange2}</td>
-              <td className={getValueClass(opp.rate2)}>{formatPercent(opp.rate2)}</td>
-              <td className={getValueClass(opp.rate_difference)}>{formatPercent(opp.rate_difference)}</td>
-              <td className={getValueClass(opp.annualized_return)}>{formatAnnualReturn(opp.annualized_return)}</td>
-              <td>{opp.recommended_strategy}</td>
             </tr>
-          ))}
+          ) : (
+            filteredOpportunities.map((opp, index) => {
+              // Определяем, где Paradex и другая биржа
+              const isParadexFirst = opp.exchange1 === 'Paradex';
+              const paradexRate = isParadexFirst ? opp.rate1 : opp.rate2;
+              const otherExchange = isParadexFirst ? opp.exchange2 : opp.exchange1;
+              const otherRate = isParadexFirst ? opp.rate2 : opp.rate1;
+              
+              return (
+                <tr key={`${opp.symbol}-${index}`}>
+                  <td>
+                    <Link to={`/asset/${opp.symbol}`} style={{fontWeight: 'bold'}}>
+                      {opp.symbol}
+                    </Link>
+                  </td>
+                  <td className={getValueClass(paradexRate)}>{formatPercent(paradexRate)}</td>
+                  <td>{otherExchange}</td>
+                  <td className={getValueClass(otherRate)}>{formatPercent(otherRate)}</td>
+                  <td className={getValueClass(opp.rate_difference)}>
+                    <span style={{fontWeight: 'bold'}}>{formatPercent(opp.rate_difference)}</span>
+                  </td>
+                  <td className={getValueClass(opp.annualized_return)}>
+                    <span style={{fontWeight: 'bold'}}>{formatAnnualReturn(opp.annualized_return)}</span>
+                  </td>
+                  <td>
+                    <Link to={`/asset/${opp.symbol}`} className="action-link">
+                      Details
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })
+          )}
         </tbody>
       </table>
     </div>

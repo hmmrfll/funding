@@ -25,6 +25,14 @@ module.exports = {
     binance: {
       baseUrl: process.env.BINANCE_API_URL || 'https://fapi.binance.com',
     },
+
+    bybit: {
+      baseUrl: process.env.BYBIT_API_URL || 'https://api.bybit.com',
+    },
+    
+    dydx: {
+      baseUrl: process.env.DYDX_API_URL || 'https://indexer.dydx.trade/v4',
+    },
   },
   scheduler: {
     interval: process.env.SCHEDULER_INTERVAL || '*/5 * * * *', // Каждые 5 минут по умолчанию

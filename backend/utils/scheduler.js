@@ -5,7 +5,8 @@ const arbitrageService = require('../services/arbitrageService');
 const paradexService = require('../services/paradexService');
 const hyperliquidService = require('../services/hyperliquidService');
 const binanceService = require('../services/binanceService');
-
+const bybitService = require('../services/bybitService');
+const dydxService = require('../services/dydxService');
 // Получаем список основных активов из конфигурации
 const TOP_ASSETS = config.topAssets;
 
@@ -56,6 +57,70 @@ async function updateParadexData() {
    console.error('Ошибка при обновлении данных Paradex:', error);
    return 0;
  }
+}
+
+// Добавить новые функции
+async function updateBybitData() {
+  try {
+    console.log('Обновление данных Bybit...');
+    let totalSaved = 0;
+    
+    for (const symbol of config.topAssets) {
+      try {
+        // Формат символа для Bybit
+        const bybitSymbol = `${symbol}USDT`;
+        
+        // Получаем данные для linear category (USDT perpetual)
+        const fundingData = await bybitService.getFundingRates(bybitSymbol, 'linear', 200);
+        
+        if (fundingData.length > 0) {
+          console.log(`Получено ${fundingData.length} записей о фандинге для ${bybitSymbol} с Bybit`);
+          
+          const savedCount = await bybitService.saveFundingData(fundingData, 'linear', symbol);
+          totalSaved += savedCount;
+        }
+      } catch (assetError) {
+        console.error(`Ошибка при обработке актива ${symbol} для Bybit:`, assetError);
+      }
+    }
+    
+    console.log(`Всего сохранено ${totalSaved} записей о фандинге с Bybit`);
+    return totalSaved;
+  } catch (error) {
+    console.error('Ошибка при обновлении данных Bybit:', error);
+    return 0;
+  }
+}
+
+async function updateDydxData() {
+  try {
+    console.log('Обновление данных DYDX...');
+    let totalSaved = 0;
+    
+    for (const symbol of config.topAssets) {
+      try {
+        // Формат тикера для DYDX
+        const dydxTicker = `${symbol}-USD`;
+        
+        const fundingData = await dydxService.getHistoricalFunding(dydxTicker, 200);
+        
+        if (fundingData.length > 0) {
+          console.log(`Получено ${fundingData.length} записей о фандинге для ${dydxTicker} с DYDX`);
+          
+          const savedCount = await dydxService.saveFundingData(fundingData, dydxTicker);
+          totalSaved += savedCount;
+        }
+      } catch (assetError) {
+        console.error(`Ошибка при обработке актива ${symbol} для DYDX:`, assetError);
+      }
+    }
+    
+    console.log(`Всего сохранено ${totalSaved} записей о фандинге с DYDX`);
+    return totalSaved;
+  } catch (error) {
+    console.error('Ошибка при обновлении данных DYDX:', error);
+    return 0;
+  }
 }
 
 // Функция обновления данных с HyperLiquid
@@ -156,17 +221,26 @@ async function updateExchangeData() {
   try {
     console.log('Начало обновления данных бирж...');
     
-    // Обновляем данные с трех бирж параллельно
-    const [paradexResult, hyperliquidResult, binanceResult] = await Promise.all([
+    // Обновляем данные со всех бирж параллельно
+    const [paradexResult, hyperliquidResult, binanceResult, bybitResult, dydxResult] = await Promise.all([
       updateParadexData(),
       updateHyperliquidData(),
-      updateBinanceData()
+      updateBinanceData(),
+      updateBybitData(),
+      updateDydxData()
     ]);
     
     // Рассчитываем арбитражные возможности
     if ((paradexResult > 0 && hyperliquidResult > 0) || 
         (paradexResult > 0 && binanceResult > 0) || 
-        (hyperliquidResult > 0 && binanceResult > 0)) {
+        (hyperliquidResult > 0 && binanceResult > 0) ||
+        (bybitResult > 0 && paradexResult > 0) ||
+        (bybitResult > 0 && hyperliquidResult > 0) ||
+        (bybitResult > 0 && binanceResult > 0) ||
+        (dydxResult > 0 && paradexResult > 0) ||
+        (dydxResult > 0 && hyperliquidResult > 0) ||
+        (dydxResult > 0 && binanceResult > 0) ||
+        (dydxResult > 0 && bybitResult > 0)) {
       const opportunities = await arbitrageService.calculateArbitrageOpportunities();
       console.log(`Рассчитано ${opportunities.length} арбитражных возможностей`);
     }
@@ -179,7 +253,6 @@ async function updateExchangeData() {
   }
 }
 
-// Функция инициализации планировщика - восстанавливаем эту функцию
 function init() {
   // Проверяем валидность cron-выражения
   if (!cron.validate(config.scheduler.interval)) {
@@ -197,10 +270,13 @@ function init() {
   updateExchangeData();
 }
 
+// Обновить экспорт модуля
 module.exports = {
   init,
-  updateExchangeData, // Экспортируем для возможности ручного запуска
+  updateExchangeData,
   updateParadexData,
   updateHyperliquidData,
-  updateBinanceData
+  updateBinanceData,
+  updateBybitData,
+  updateDydxData
 };
