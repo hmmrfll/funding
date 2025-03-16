@@ -1,6 +1,7 @@
 // utils/scheduler.js
 const cron = require('node-cron');
 const config = require('../config/config');
+const db = require('../config/db'); // Добавляем импорт db
 const arbitrageService = require('../services/arbitrageService');
 const paradexService = require('../services/paradexService');
 const hyperliquidService = require('../services/hyperliquidService');
@@ -17,6 +18,22 @@ async function updateParadexData() {
     const markets = await paradexService.getMarkets();
     console.log(`Получено ${markets.length} рынков с Paradex`);
    
+    try {
+      // Получаем и сохраняем данные о статистике рынков
+      const marketsSummary = await paradexService.getMarketsSummary();
+      if (marketsSummary && marketsSummary.length > 0) {
+        console.log(`Получено ${marketsSummary.length} записей о статистике рынков с Paradex`);
+        
+        await db.query(
+          `INSERT INTO external_data (source, content) VALUES ($1, $2)`,
+          ['paradex_markets_summary', JSON.stringify(marketsSummary)]
+        );
+        console.log('Сохранены данные о статистике рынков Paradex');
+      }
+    } catch (summaryError) {
+      console.error('Ошибка при получении или сохранении статистики рынков Paradex:', summaryError);
+    }
+    
     // Фильтруем рынки, оставляя только топовые активы
     const filteredMarkets = markets.filter(market => {
       // Проверяем, что это рынок с бессрочными контрактами и он входит в список TOP_ASSETS
@@ -59,29 +76,37 @@ async function updateParadexData() {
  }
 }
 
-// Добавить новые функции
+// Функция обновления данных с Bybit
 async function updateBybitData() {
   try {
     console.log('Обновление данных Bybit...');
     let totalSaved = 0;
     
-    for (const symbol of config.topAssets) {
+    // Get latest tickers which include funding rates
+    const tickerData = await bybitService.getLatestTickers('linear');
+    
+    if (tickerData.length > 0) {
+      console.log(`Получено ${tickerData.length} тикеров с Bybit`);
+      
       try {
-        // Формат символа для Bybit
-        const bybitSymbol = `${symbol}USDT`;
-        
-        // Получаем данные для linear category (USDT perpetual)
-        const fundingData = await bybitService.getFundingRates(bybitSymbol, 'linear', 200);
-        
-        if (fundingData.length > 0) {
-          console.log(`Получено ${fundingData.length} записей о фандинге для ${bybitSymbol} с Bybit`);
-          
-          const savedCount = await bybitService.saveFundingData(fundingData, 'linear', symbol);
-          totalSaved += savedCount;
-        }
-      } catch (assetError) {
-        console.error(`Ошибка при обработке актива ${symbol} для Bybit:`, assetError);
+        // Сохраняем сырые данные тикеров для использования в метриках
+        await bybitService.saveTickersData(tickerData);
+        console.log('Сохранены сырые данные тикеров Bybit для метрик');
+      } catch (saveError) {
+        console.error('Ошибка при сохранении тикеров Bybit:', saveError);
       }
+      
+      // Filter tickers for top assets
+      const filteredTickers = tickerData.filter(ticker => {
+        const baseSymbol = ticker.symbol.replace(/USDT$|USD$|BUSD$/, '');
+        return config.topAssets.includes(baseSymbol);
+      });
+      
+      console.log(`Отфильтровано ${filteredTickers.length} тикеров для основных активов`);
+      
+      // Save ticker data with funding rates
+      const savedCount = await bybitService.saveFundingDataFromTickers(filteredTickers, 'linear');
+      totalSaved += savedCount;
     }
     
     console.log(`Всего сохранено ${totalSaved} записей о фандинге с Bybit`);
@@ -92,38 +117,6 @@ async function updateBybitData() {
   }
 }
 
-async function updateDydxData() {
-  try {
-    console.log('Обновление данных DYDX...');
-    let totalSaved = 0;
-    
-    for (const symbol of config.topAssets) {
-      try {
-        // Формат тикера для DYDX
-        const dydxTicker = `${symbol}-USD`;
-        
-        const fundingData = await dydxService.getHistoricalFunding(dydxTicker, 200);
-        
-        if (fundingData.length > 0) {
-          console.log(`Получено ${fundingData.length} записей о фандинге для ${dydxTicker} с DYDX`);
-          
-          const savedCount = await dydxService.saveFundingData(fundingData, dydxTicker);
-          totalSaved += savedCount;
-        }
-      } catch (assetError) {
-        console.error(`Ошибка при обработке актива ${symbol} для DYDX:`, assetError);
-      }
-    }
-    
-    console.log(`Всего сохранено ${totalSaved} записей о фандинге с DYDX`);
-    return totalSaved;
-  } catch (error) {
-    console.error('Ошибка при обновлении данных DYDX:', error);
-    return 0;
-  }
-}
-
-// Функция обновления данных с HyperLiquid
 async function updateHyperliquidData() {
  try {
    console.log('Обновление данных HyperLiquid...');
@@ -131,6 +124,17 @@ async function updateHyperliquidData() {
    // Получаем метаданные и контексты активов
    const { meta, contexts } = await hyperliquidService.getAssetContexts();
    console.log(`Получено ${meta.length} активов и ${contexts.length} контекстов с HyperLiquid`);
+   
+   if (contexts && contexts.length > 0) {
+     console.log(`Получено ${contexts.length} контекстов активов с HyperLiquid`);
+     
+     try {
+       await hyperliquidService.saveAssetContextsData(contexts);
+       console.log('Сохранены контексты активов HyperLiquid для метрик');
+     } catch (saveError) {
+       console.error('Ошибка при сохранении контекстов HyperLiquid:', saveError);
+     }
+   }
    
    // Фильтруем активы по списку TOP_ASSETS
    const filteredMeta = meta.filter(m => TOP_ASSETS.includes(m.name));
@@ -216,18 +220,18 @@ async function updateBinanceData() {
   }
 }
 
-// Функция обновления данных обеих бирж
+// Функция обновления данных всех бирж
 async function updateExchangeData() {
   try {
     console.log('Начало обновления данных бирж...');
     
     // Обновляем данные со всех бирж параллельно
-    const [paradexResult, hyperliquidResult, binanceResult, bybitResult, dydxResult] = await Promise.all([
+    const [paradexResult, hyperliquidResult, binanceResult, bybitResult] = await Promise.all([
       updateParadexData(),
       updateHyperliquidData(),
       updateBinanceData(),
       updateBybitData(),
-      updateDydxData()
+      // DYDX исключен, т.к. нет реальных данных
     ]);
     
     // Рассчитываем арбитражные возможности
@@ -236,11 +240,7 @@ async function updateExchangeData() {
         (hyperliquidResult > 0 && binanceResult > 0) ||
         (bybitResult > 0 && paradexResult > 0) ||
         (bybitResult > 0 && hyperliquidResult > 0) ||
-        (bybitResult > 0 && binanceResult > 0) ||
-        (dydxResult > 0 && paradexResult > 0) ||
-        (dydxResult > 0 && hyperliquidResult > 0) ||
-        (dydxResult > 0 && binanceResult > 0) ||
-        (dydxResult > 0 && bybitResult > 0)) {
+        (bybitResult > 0 && binanceResult > 0)) {
       const opportunities = await arbitrageService.calculateArbitrageOpportunities();
       console.log(`Рассчитано ${opportunities.length} арбитражных возможностей`);
     }
@@ -267,16 +267,33 @@ function init() {
   
   // Запускаем первичное обновление данных при старте приложения
   console.log('Запуск первичного обновления данных...');
-  updateExchangeData();
+  
+  // Выполняем первичное получение статистики рынков Paradex
+  paradexService.getMarketsSummary()
+    .then(marketsSummary => {
+      if (marketsSummary && marketsSummary.length > 0) {
+        console.log(`Получено ${marketsSummary.length} записей о статистике рынков с Paradex`);
+        return db.query(
+          `INSERT INTO external_data (source, content) VALUES ($1, $2)`,
+          ['paradex_markets_summary', JSON.stringify(marketsSummary)]
+        );
+      }
+    })
+    .then(() => {
+      console.log('Сохранены данные о статистике рынков Paradex на старте');
+      updateExchangeData();
+    })
+    .catch(error => {
+      console.error('Ошибка при первичном получении статистики рынков Paradex:', error);
+      updateExchangeData();
+    });
 }
 
-// Обновить экспорт модуля
 module.exports = {
   init,
   updateExchangeData,
   updateParadexData,
   updateHyperliquidData,
   updateBinanceData,
-  updateBybitData,
-  updateDydxData
+  updateBybitData
 };

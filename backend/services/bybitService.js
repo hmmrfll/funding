@@ -85,6 +85,107 @@ class BybitService {
     }
   }
 
+  async getLatestTickers(category = 'linear') {
+    try {
+      console.log(`Запрос текущих тикеров с Bybit API (категория: ${category})`);
+      
+      const response = await axios.get(`${this.baseUrl}/v5/market/tickers`, {
+        params: { category }
+      });
+      
+      if (!response.data || !response.data.result || !response.data.result.list) {
+        console.error('Неожиданный формат ответа от Bybit API tickers');
+        return [];
+      }
+      
+      return response.data.result.list;
+    } catch (error) {
+      this.handleApiError(error, `получении текущих тикеров с Bybit`);
+      return [];
+    }
+  }
+
+  async saveFundingDataFromTickers(tickerData, category) {
+    try {
+      if (!tickerData || tickerData.length === 0) {
+        return 0;
+      }
+      
+      let savedCount = 0;
+      
+      for (const data of tickerData) {
+        try {
+          // Skip if no funding rate information
+          if (!data.fundingRate) {
+            continue;
+          }
+          
+          // Extract base symbol (e.g., BTCUSDT -> BTC)
+          const baseSymbol = data.symbol.replace(/USDT$|USD$|BUSD$/, '');
+          
+          // Get or create asset record
+          const assetId = await assetService.getAssetOrCreateBySymbol(baseSymbol);
+          
+          // Current timestamp 
+          const currentTime = Date.now();
+          
+          // Save to database
+          await db.query(
+            `INSERT INTO bybit_funding_rates 
+            (asset_id, symbol, funding_rate, funding_time, category, created_at) 
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (asset_id, symbol, funding_time) DO NOTHING`,
+            [
+              assetId,
+              data.symbol,
+              data.fundingRate,
+              data.nextFundingTime || currentTime, // Use nextFundingTime if available
+              category,
+              currentTime
+            ]
+          );
+          savedCount++;
+          
+          // Save metadata
+          await db.query(
+            `INSERT INTO bybit_asset_metadata 
+            (asset_id, symbol, category, updated_at) 
+            VALUES ($1, $2, $3, NOW())
+            ON CONFLICT (asset_id, symbol) DO UPDATE SET 
+              category = $3,
+              updated_at = NOW()`,
+            [
+              assetId,
+              data.symbol,
+              category
+            ]
+          );
+        } catch (innerError) {
+          console.error(`Ошибка при сохранении данных о фандинге для ${data.symbol} Bybit:`, innerError);
+        }
+      }
+      
+      return savedCount;
+    } catch (error) {
+      console.error('Ошибка при сохранении данных о фандинге Bybit:', error);
+      throw error;
+    }
+  }
+
+  // Добавить в класс BybitService метод для сохранения тикеров:
+  async saveTickersData(tickerData) {
+    try {
+      const result = await db.query(
+        `INSERT INTO external_data (source, content) VALUES ($1, $2) RETURNING id`,
+        ['bybit_tickers', JSON.stringify(tickerData)]
+      );
+      return result.rows[0].id;
+    } catch (error) {
+      console.error('Ошибка при сохранении тикеров Bybit:', error);
+      throw error;
+    }
+  }
+
   handleApiError(error, context) {
     console.error(`Ошибка при ${context}:`, error);
     

@@ -538,4 +538,134 @@ router.get('/all-rates/:symbol', async (req, res, next) => {
   }
 });
 
+// Получение метрик для MAX XP фильтров
+router.get('/asset-metrics', async (req, res, next) => {
+  try {
+    // Список "новых" монет для дополнительных XP
+    const newCoins = ['JUP', 'PYTH', 'MANTA', 'RON', 'SEI', 'TAO', 'STRK', 'ZETA', 'BONK', 'BLUR'];
+    const LOW_OI_THRESHOLD = 150000; // 150k USD
+    const LOW_VOLUME_THRESHOLD = 500000; // 500k USD
+    
+    // Проверяем наличие данных в таблице
+    const checkQuery = `
+      SELECT COUNT(*) as count
+      FROM external_data
+      WHERE source = 'paradex_markets_summary'
+    `;
+    
+    const checkResult = await db.query(checkQuery);
+    const hasData = parseInt(checkResult.rows[0].count) > 0;
+    
+    if (!hasData) {
+      console.log('Нет данных о статистике рынков Paradex. Выполняем запрос API...');
+      try {
+        // Запрашиваем данные и сохраняем их
+        const paradexService = require('../services/paradexService');
+        const marketsSummary = await paradexService.getMarketsSummary();
+        
+        if (marketsSummary && marketsSummary.length > 0) {
+          await db.query(
+            `INSERT INTO external_data (source, content) VALUES ($1, $2)`,
+            ['paradex_markets_summary', JSON.stringify(marketsSummary)]
+          );
+          console.log(`Получено и сохранено ${marketsSummary.length} записей о статистике рынков с Paradex`);
+        } else {
+          throw new Error("Не удалось получить данные с Paradex API");
+        }
+      } catch (apiError) {
+        console.error('Ошибка при получении данных с Paradex API:', apiError);
+        return res.status(500).json({ 
+          status: 'error', 
+          message: 'Не удалось получить данные о статистике рынков' 
+        });
+      }
+    }
+    
+    // Получаем последние данные о статистике рынков
+    const query = `
+      WITH latest_data AS (
+        SELECT id, content
+        FROM external_data
+        WHERE source = 'paradex_markets_summary'
+        ORDER BY created_at DESC
+        LIMIT 1
+      )
+      SELECT content FROM latest_data
+    `;
+    
+    const result = await db.query(query);
+    
+    if (!result.rows.length) {
+      throw new Error('Данные о статистике рынков Paradex не найдены');
+    }
+    
+    // Парсим JSON данные
+    const marketsSummary = JSON.parse(result.rows[0].content);
+    
+    // Преобразуем в объект с данными по символам
+    const metricsMap = {};
+    
+    // Обрабатываем только бессрочные контракты (PERP)
+    marketsSummary.forEach(marketData => {
+      if (marketData.symbol && (marketData.symbol.endsWith('-PERP') || marketData.symbol.includes('-USD-PERP'))) {
+        // Извлекаем базовый символ (например, BTC-USD-PERP -> BTC)
+        const baseSymbol = marketData.symbol.split('-')[0];
+        
+        // Вычисляем OI в USD
+        const openInterest = parseFloat(marketData.open_interest || 0);
+        const markPrice = parseFloat(marketData.mark_price || 0);
+        const openInterestUsd = openInterest * markPrice;
+        
+        // Объем в USD
+        const volume = parseFloat(marketData.volume_24h || 0);
+        
+        metricsMap[baseSymbol] = {
+          openInterest: openInterestUsd,
+          volume: volume,
+          isNew: newCoins.includes(baseSymbol),
+          hasLowOi: openInterestUsd <= LOW_OI_THRESHOLD,
+          hasLowVolume: volume <= LOW_VOLUME_THRESHOLD
+        };
+      }
+    });
+    
+    // Получаем список всех активных активов для дополнения данных
+    const assetsQuery = `SELECT symbol FROM assets WHERE is_active = TRUE`;
+    const assetsResult = await db.query(assetsQuery);
+    
+    // Создаем объект метрик для всех активов
+    const metrics = {};
+    assetsResult.rows.forEach(asset => {
+      const symbol = asset.symbol;
+      
+      // Если у нас есть данные для этого актива, используем их
+      if (metricsMap[symbol]) {
+        metrics[symbol] = metricsMap[symbol];
+      } else {
+        // Иначе заполняем нулевыми значениями
+        metrics[symbol] = {
+          openInterest: 0,
+          volume: 0, 
+          isNew: newCoins.includes(symbol),
+          hasLowOi: true,  // Считаем, что если нет данных, то OI низкий
+          hasLowVolume: true  // Считаем, что если нет данных, то объем низкий
+        };
+      }
+    });
+    
+    // Логируем статистику для отладки
+    const totalAssets = Object.keys(metrics).length;
+    const withOi = Object.values(metrics).filter(m => m.openInterest > 0).length;
+    const withVolume = Object.values(metrics).filter(m => m.volume > 0).length;
+    console.log(`Всего активов: ${totalAssets}, с OI > 0: ${withOi}, с Volume > 0: ${withVolume}`);
+    
+    res.json(metrics);
+  } catch (error) {
+    console.error('Ошибка при получении метрик активов:', error);
+    next(error);
+  }
+});
+
+
+
 module.exports = router;

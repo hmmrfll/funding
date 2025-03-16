@@ -235,6 +235,20 @@ class HyperliquidService {
     }
   }
 
+  // Добавить в класс HyperliquidService метод для сохранения контекстов активов:
+  async saveAssetContextsData(contexts) {
+    try {
+      const result = await db.query(
+        `INSERT INTO external_data (source, content) VALUES ($1, $2) RETURNING id`,
+        ['hyperliquid_contexts', JSON.stringify(contexts)]
+      );
+      return result.rows[0].id;
+    } catch (error) {
+      console.error('Ошибка при сохранении контекстов активов HyperLiquid:', error);
+      throw error;
+    }
+  }
+  
   handleApiError(error, context) {
     console.error(`Ошибка при ${context}:`, error);
     

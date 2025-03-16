@@ -192,3 +192,14 @@ CREATE TABLE IF NOT EXISTS dydx_asset_metadata (
     updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE (asset_id, ticker)
 );
+
+-- Таблица для хранения сырых данных тикеров и другой информации 
+CREATE TABLE IF NOT EXISTS external_data (
+    id SERIAL PRIMARY KEY,
+    source VARCHAR(50) NOT NULL, -- 'bybit_tickers', 'paradex_markets', etc.
+    content TEXT NOT NULL,       -- JSON-контент
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_external_data_source ON external_data(source);
+CREATE INDEX IF NOT EXISTS idx_external_data_created_at ON external_data(created_at);

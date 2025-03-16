@@ -80,27 +80,6 @@ class ArbitrageService {
       
       const result = await db.query(query);
       
-      // Диагностические логи
-      console.log(`Получено ${result.rows.length} активов с данными`);
-      console.log(`Paradex данные: ${result.rows.filter(row => row.paradex_rate !== null).length}`);
-      console.log(`HyperLiquid данные: ${result.rows.filter(row => row.hyperliquid_rate !== null).length}`);
-      console.log(`Binance данные: ${result.rows.filter(row => row.binance_rate !== null).length}`);
-      console.log(`Bybit данные: ${result.rows.filter(row => row.bybit_rate !== null).length}`);
-      console.log(`DYDX данные: ${result.rows.filter(row => row.dydx_rate !== null).length}`);
-      
-      // Анализ доступных пар для арбитража
-      console.log("Доступные пары для арбитража:");
-      console.log(`Paradex-HyperLiquid: ${result.rows.filter(row => row.paradex_rate !== null && row.hyperliquid_rate !== null).length}`);
-      console.log(`Paradex-Binance: ${result.rows.filter(row => row.paradex_rate !== null && row.binance_rate !== null).length}`);
-      console.log(`Paradex-Bybit: ${result.rows.filter(row => row.paradex_rate !== null && row.bybit_rate !== null).length}`);
-      console.log(`Paradex-DYDX: ${result.rows.filter(row => row.paradex_rate !== null && row.dydx_rate !== null).length}`);
-      console.log(`HyperLiquid-Binance: ${result.rows.filter(row => row.hyperliquid_rate !== null && row.binance_rate !== null).length}`);
-      console.log(`HyperLiquid-Bybit: ${result.rows.filter(row => row.hyperliquid_rate !== null && row.bybit_rate !== null).length}`);
-      console.log(`HyperLiquid-DYDX: ${result.rows.filter(row => row.hyperliquid_rate !== null && row.dydx_rate !== null).length}`);
-      console.log(`Binance-Bybit: ${result.rows.filter(row => row.binance_rate !== null && row.bybit_rate !== null).length}`);
-      console.log(`Binance-DYDX: ${result.rows.filter(row => row.binance_rate !== null && row.dydx_rate !== null).length}`);
-      console.log(`Bybit-DYDX: ${result.rows.filter(row => row.bybit_rate !== null && row.dydx_rate !== null).length}`);
-      
       // Сохраняем арбитражные возможности между всеми биржами
       for (const row of result.rows) {
         // Существующие пары бирж - сохраняем как есть
@@ -222,8 +201,13 @@ class ArbitrageService {
         
         // НОВЫЕ ПАРЫ С DYDX
         
+        if (row.dydx_rate === 0 || row.dydx_rate === null) {
+          console.log(`Пропускаем DYDX для ${row.symbol} из-за нулевой ставки фандинга`);
+          continue;
+        }
         // Paradex - DYDX
         if (row.paradex_rate !== null && row.dydx_rate !== null) {
+          // In the calculateArbitrageOpportunities method, before calculating diff:
           const diff = row.paradex_rate - row.dydx_rate;
           const strategy = diff > 0 
             ? 'Long on DYDX, Short on Paradex' 

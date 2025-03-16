@@ -126,6 +126,42 @@ class ParadexService {
     }
   }
 
+  // Добавить в класс ParadexService метод для сохранения данных рынков:
+  // paradexService.js
+  async saveMarketsData(marketsData) {
+    try {
+      console.log(`Сохранение данных ${marketsData.length} рынков Paradex`);
+      const result = await db.query(
+        `INSERT INTO external_data (source, content) VALUES ($1, $2) RETURNING id`,
+        ['paradex_markets', JSON.stringify(marketsData)]
+      );
+      return result.rows[0].id;
+    } catch (error) {
+      console.error('Ошибка при сохранении данных рынков Paradex:', error);
+      throw error;
+    }
+  }
+
+  // В файле paradexService.js добавьте метод для получения данных рыночной статистики
+async getMarketsSummary() {
+  try {
+    console.log(`Запрос к Paradex API: ${this.baseUrl}/markets/summary?market=ALL`);
+    const response = await axios.get(`${this.baseUrl}/markets/summary`, {
+      params: { market: 'ALL' }
+    });
+    
+    if (!response.data || !response.data.results) {
+      console.error('Неожиданный формат ответа от Paradex API markets/summary');
+      return [];
+    }
+    
+    return response.data.results;
+  } catch (error) {
+    this.handleApiError(error, 'получении данных о статистике рынков с Paradex');
+    return [];
+  }
+}
+
   handleApiError(error, context) {
     console.error(`Ошибка при ${context}:`, error);
     
