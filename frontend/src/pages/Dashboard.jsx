@@ -1,84 +1,74 @@
-// Dashboard.jsx
+// Обновленная версия Dashboard.jsx с фокусом на Paradex, удалением DYDX и добавлением MAX XP фильтров
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 
-// API URL - можно вынести в конфигурационный файл
-const API_URL = 'http://localhost:8034/api';
+const API_URL = 'http://91.239.206.123:10902/api';
+// const API_URL = 'http://localhost:8034/api';
+
+// Предполагаемые списки монет для фильтров MAX XP (пример)
+// В реальной имплементации эти данные должны приходить с API
+const NEW_COINS = ['JUP', 'PYTH', 'MANTA', 'RON', 'SEI', 'TAO', 'STRK', 'ZETA', 'BONK', 'BLUR'];
+const LOW_OI_THRESHOLD = 150000; // 150k USD
+const LOW_VOLUME_THRESHOLD = 500000; // 500k USD
 
 const Dashboard = () => {
-  // Состояния для данных
   const [opportunities, setOpportunities] = useState([]);
-  const [assetMetrics, setAssetMetrics] = useState({});
-  const [maxXpSettings, setMaxXpSettings] = useState({
-    newCoins: [],
-    lowOiThreshold: 150000,
-    lowVolumeThreshold: 500000
-  });
-  
-  // Состояния для UI
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [lastUpdated, setLastUpdated] = useState(null);
-  
-  // Состояния для фильтров
   const [sortConfig, setSortConfig] = useState({ key: 'annualized_return', direction: 'desc' });
+  const [lastUpdated, setLastUpdated] = useState(null);
   const [returnTypeFilter, setReturnTypeFilter] = useState('all'); // 'all', 'positive', 'negative', 'absolute'
   const [defaultComparisonExchange, setDefaultComparisonExchange] = useState('all');
+  const [availableExchanges, setAvailableExchanges] = useState([]); // Будет заполнен динамически
+  const [searchQuery, setSearchQuery] = useState(''); // Поиск по тикеру
+  
+  // Новые состояния для фильтров MAX XP
   const [maxXpFilter, setMaxXpFilter] = useState('none'); // 'none', 'new', 'lowOi', 'lowVolume'
-  const [searchQuery, setSearchQuery] = useState('');
-  const [availableExchanges, setAvailableExchanges] = useState([]);
+  const [assetMetrics, setAssetMetrics] = useState({}); // Для хранения данных о OI и объеме
+  
+  // Загрузка дополнительных данных для фильтров MAX XP
+  // Заменить блок useEffect для fetchAssetMetrics на следующий код:
 
-  // Загрузка настроек MAX XP фильтров
-  useEffect(() => {
-    const fetchMaxXpSettings = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/config/max-xp-settings`);
-        setMaxXpSettings(response.data);
-      } catch (err) {
-        console.error('Error fetching MAX XP settings:', err);
-        // Используем дефолтные значения, если запрос не удался
-      }
-    };
-    
-    fetchMaxXpSettings();
-  }, []);
+// В Dashboard.jsx, замените useEffect для fetchAssetMetrics:
 
-  // Загрузка метрик для MAX XP фильтров
-  useEffect(() => {
-    const fetchAssetMetrics = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/asset-metrics`);
-        setAssetMetrics(response.data);
-        console.log("Получены метрики активов:", Object.keys(response.data).length);
-        
-        // Проверяем наличие данных
-        const nonZeroOi = Object.values(response.data)
-          .filter(m => m.openInterest > 0).length;
-        const nonZeroVolume = Object.values(response.data)
-          .filter(m => m.volume > 0).length;
-        console.log(`Активы с ненулевым OI: ${nonZeroOi}, с ненулевым объемом: ${nonZeroVolume}`);
-      } catch (err) {
-        console.error('Error fetching asset metrics:', err);
-        setAssetMetrics({});
-      }
-    };
-    
-    fetchAssetMetrics();
-    
-    // Обновляем метрики каждые 5 минут
-    const intervalId = setInterval(fetchAssetMetrics, 5 * 60 * 1000);
-    return () => clearInterval(intervalId);
-  }, []);
-
-  // Загрузка сохраненных настроек пользователя
+useEffect(() => {
+  const fetchAssetMetrics = async () => {
+    try {
+      // Реальный API-запрос вместо временной заглушки
+      const response = await axios.get(`${API_URL}/asset-metrics`);
+      setAssetMetrics(response.data);
+      console.log("Получены метрики активов:", Object.keys(response.data).length);
+      
+      // Проверяем наличие данных
+      const nonZeroOi = Object.values(response.data)
+        .filter(m => m.openInterest > 0).length;
+      const nonZeroVolume = Object.values(response.data)
+        .filter(m => m.volume > 0).length;
+      console.log(`Активы с ненулевым OI: ${nonZeroOi}, с ненулевым объемом: ${nonZeroVolume}`);
+    } catch (err) {
+      console.error('Error fetching asset metrics:', err);
+      // В случае ошибки используем пустой объект
+      setAssetMetrics({});
+    }
+  };
+  
+  fetchAssetMetrics();
+  
+  // Обновляем метрики каждые 5 минут вместе с основными данными
+  const intervalId = setInterval(fetchAssetMetrics, 5 * 60 * 1000);
+  
+  return () => clearInterval(intervalId);
+}, []);
+  // Загрузка сохраненных настроек
   useEffect(() => {
     const savedExchange = localStorage.getItem('defaultComparisonExchange');
     const savedReturnType = localStorage.getItem('returnTypeFilter');
     const savedSortConfig = JSON.parse(localStorage.getItem('sortConfig'));
     const savedScrollPosition = localStorage.getItem('scrollPosition');
     const savedSearchQuery = localStorage.getItem('searchQuery');
-    const savedMaxXpFilter = localStorage.getItem('maxXpFilter');
+    const savedMaxXpFilter = localStorage.getItem('maxXpFilter'); // Новое сохранение
     
     if (savedExchange) setDefaultComparisonExchange(savedExchange);
     if (savedReturnType) setReturnTypeFilter(savedReturnType);
@@ -93,13 +83,13 @@ const Dashboard = () => {
     }
   }, []);
 
-  // Сохранение настроек пользователя при их изменении
+  // Сохранение настроек при их изменении
   useEffect(() => {
     localStorage.setItem('defaultComparisonExchange', defaultComparisonExchange);
     localStorage.setItem('returnTypeFilter', returnTypeFilter);
     localStorage.setItem('sortConfig', JSON.stringify(sortConfig));
     localStorage.setItem('searchQuery', searchQuery);
-    localStorage.setItem('maxXpFilter', maxXpFilter);
+    localStorage.setItem('maxXpFilter', maxXpFilter); // Новое сохранение
   }, [defaultComparisonExchange, returnTypeFilter, sortConfig, searchQuery, maxXpFilter]);
 
   // Сохранение позиции прокрутки при уходе со страницы
@@ -109,8 +99,41 @@ const Dashboard = () => {
     };
     
     window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, []);
+
+  // Диагностический эффект для логирования состояния данных
+  useEffect(() => {
+    if (opportunities && opportunities.length > 0) {
+      console.log("Total opportunities in DB:", opportunities.length);
+      
+      // Анализ наличия данных по биржам
+      const paradexCount = opportunities.filter(opp => 
+        opp.exchange1 === 'Paradex' || opp.exchange2 === 'Paradex'
+      ).length;
+      
+      // Проверяем, какие биржи взаимодействуют с Paradex
+      const hyperliquidCount = opportunities.filter(opp => 
+        (opp.exchange1 === 'Paradex' && opp.exchange2 === 'HyperLiquid') || 
+        (opp.exchange1 === 'HyperLiquid' && opp.exchange2 === 'Paradex')
+      ).length;
+      
+      const bybitCount = opportunities.filter(opp => 
+        (opp.exchange1 === 'Paradex' && opp.exchange2 === 'Bybit') || 
+        (opp.exchange1 === 'Bybit' && opp.exchange2 === 'Paradex')
+      ).length;
+      
+      console.log("Paradex count:", paradexCount);
+      console.log("Paradex + HyperLiquid count:", hyperliquidCount);
+      console.log("Paradex + Bybit count:", bybitCount);
+    }
+    
+    console.log("Selected comparison exchange:", defaultComparisonExchange);
+    console.log("Selected MAX XP filter:", maxXpFilter);
+  }, [opportunities, defaultComparisonExchange, maxXpFilter]);
 
   // Динамическое обновление списка доступных бирж
   useEffect(() => {
@@ -128,21 +151,42 @@ const Dashboard = () => {
     }
   }, [opportunities]);
 
-  // Загрузка арбитражных возможностей
   useEffect(() => {
     fetchData();
     
     // Автоматическое обновление каждые 5 минут
     const intervalId = setInterval(fetchData, 5 * 60 * 1000);
+    
     return () => clearInterval(intervalId);
   }, []);
 
-  // Функция загрузки арбитражных возможностей
+  // Функция fetchData в Dashboard.jsx
   const fetchData = async () => {
     setLoading(true);
     try {
       const response = await axios.get(`${API_URL}/opportunities`);
       console.log("Получено с API:", response.data.length, "записей");
+      console.log("Типы бирж:", [...new Set(response.data.map(o => o.exchange1)), ...new Set(response.data.map(o => o.exchange2))]);
+      
+      // Здесь можно увидеть, какие биржи представлены в данных
+      const paradexHyper = response.data.filter(o => 
+        (o.exchange1 === 'Paradex' && o.exchange2 === 'HyperLiquid') || 
+        (o.exchange1 === 'HyperLiquid' && o.exchange2 === 'Paradex')
+      ).length;
+      
+      const paradexBinance = response.data.filter(o => 
+        (o.exchange1 === 'Paradex' && o.exchange2 === 'Binance') || 
+        (o.exchange1 === 'Binance' && o.exchange2 === 'Paradex')
+      ).length;
+      
+      const paradexBybit = response.data.filter(o => 
+        (o.exchange1 === 'Paradex' && o.exchange2 === 'Bybit') || 
+        (o.exchange1 === 'Bybit' && o.exchange2 === 'Paradex')
+      ).length;
+      
+      console.log("Paradex-HyperLiquid:", paradexHyper);
+      console.log("Paradex-Binance:", paradexBinance);
+      console.log("Paradex-Bybit:", paradexBybit);
       
       // Фильтруем данные - только те, где участвует Paradex, и исключаем DYDX
       const paradexOpportunities = response.data.filter(opp => 
@@ -162,7 +206,6 @@ const Dashboard = () => {
     }
   };
 
-  // Обработчик обновления данных
   const handleRefresh = async () => {
     try {
       setLoading(true);
@@ -175,7 +218,6 @@ const Dashboard = () => {
     }
   };
 
-  // Функции форматирования
   const formatPercent = (value) => {
     return (value * 100).toFixed(4) + '%';
   };
@@ -192,12 +234,11 @@ const Dashboard = () => {
     }).format(value);
   };
 
-  // Определение класса стиля для значений
   const getValueClass = (value) => {
     return parseFloat(value) > 0 ? 'positive' : parseFloat(value) < 0 ? 'negative' : '';
   };
 
-  // Обработчик изменения поисковой строки
+  // Обработчик изменения строки поиска
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
   };
@@ -211,7 +252,7 @@ const Dashboard = () => {
       return [];
     }
     
-    // Фильтр по бирже для сравнения с Paradex
+    // Если выбрана конкретная биржа для сравнения с Paradex (и не "all")
     if (defaultComparisonExchange !== 'all') {
       filtered = filtered.filter(opp => 
         (opp.exchange1 === 'Paradex' && opp.exchange2 === defaultComparisonExchange) || 
@@ -219,14 +260,14 @@ const Dashboard = () => {
       );
     }
     
-    // Фильтр по типу доходности
+    // Добавим фильтрацию по типу доходности
     if (returnTypeFilter === 'positive') {
       filtered = filtered.filter(opp => parseFloat(opp.annualized_return) > 0);
     } else if (returnTypeFilter === 'negative') {
       filtered = filtered.filter(opp => parseFloat(opp.annualized_return) < 0);
     }
 
-    // Фильтр по поисковому запросу
+    // Применяем поиск по тикеру, если есть запрос
     if (searchQuery.trim() !== '') {
       const query = searchQuery.trim().toLowerCase();
       filtered = filtered.filter(opp => 
@@ -234,7 +275,7 @@ const Dashboard = () => {
       );
     }
     
-    // Фильтр MAX XP
+    // Применяем фильтры MAX XP
     if (maxXpFilter !== 'none' && Object.keys(assetMetrics).length > 0) {
       filtered = filtered.filter(opp => {
         const metrics = assetMetrics[opp.symbol];
@@ -253,7 +294,7 @@ const Dashboard = () => {
       });
     }
     
-    // Сортировка
+    // Сортировка с учетом типа доходности
     filtered.sort((a, b) => {
       if (sortConfig.key === 'symbol') {
         return sortConfig.direction === 'asc' 
@@ -278,14 +319,12 @@ const Dashboard = () => {
     return filtered;
   }, [opportunities, defaultComparisonExchange, returnTypeFilter, sortConfig, searchQuery, maxXpFilter, assetMetrics]);
 
-  // Индикатор загрузки
   if (loading && opportunities.length === 0) {
     return <div className="loading">Loading data...</div>;
   }
 
   return (
     <div>
-      {/* Заголовок и кнопка обновления */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2 className="dashboard-title">Funding Arbitrage Dashboard</h2>
         <div>
@@ -300,14 +339,13 @@ const Dashboard = () => {
         </div>
       </div>
       
-      {/* Сообщение об ошибке */}
       {error && <div className="error">{error}</div>}
       
-      {/* Блок фильтров */}
+      {/* Параметры и фильтры */}
       <div className="card">
         <h3 className="card-title">Filter Options</h3>
         
-        {/* Поиск по символу */}
+        {/* Добавляем поиск по тикеру */}
         <div style={{marginBottom: '15px'}}>
           <span className="filter-label">Search by Symbol:</span>
           <input
@@ -335,7 +373,6 @@ const Dashboard = () => {
           )}
         </div>
         
-        {/* Фильтр по бирже для сравнения */}
         <div style={{marginBottom: '15px'}}>
           <span className="filter-label">Compare Paradex with:</span>
           <div className="filter-group">
@@ -357,7 +394,7 @@ const Dashboard = () => {
           </div>
         </div>
         
-        {/* MAX XP фильтры */}
+        {/* MAX XP фильтры - новая секция */}
         <div style={{marginBottom: '15px', borderTop: '1px solid #eee', paddingTop: '15px'}}>
           <span className="filter-label" style={{fontWeight: 'bold', color: '#4a90e2'}}>MAX XP Filters:</span>
           <div className="filter-group">
@@ -377,18 +414,18 @@ const Dashboard = () => {
               onClick={() => setMaxXpFilter('lowOi')}
               className={`btn btn-secondary ${maxXpFilter === 'lowOi' ? 'active' : ''}`}
             >
-              Low OI (≤{formatDollars(maxXpSettings.lowOiThreshold)})
+              Low OI (≤{formatDollars(LOW_OI_THRESHOLD)})
             </button>
             <button
               onClick={() => setMaxXpFilter('lowVolume')}
               className={`btn btn-secondary ${maxXpFilter === 'lowVolume' ? 'active' : ''}`}
             >
-              Low Volume (≤{formatDollars(maxXpSettings.lowVolumeThreshold)})
+              Low Volume (≤{formatDollars(LOW_VOLUME_THRESHOLD)})
             </button>
           </div>
         </div>
         
-        {/* Фильтр по типу доходности */}
+        {/* Фильтр для типа доходности */}
         <div style={{marginBottom: '15px'}}>
           <span className="filter-label">Return Type:</span>
           <div className="filter-group">
@@ -419,7 +456,6 @@ const Dashboard = () => {
           </div>
         </div>
         
-        {/* Опции сортировки */}
         <div>
           <span className="filter-label">Sort by:</span>
           <div className="filter-group">
@@ -454,7 +490,7 @@ const Dashboard = () => {
         </div>
       </div>
       
-      {/* Статистические карточки */}
+      {/* Статистика */}
       <div className="stats-grid">
         <div className="stats-card">
           <div className="stats-label">Total Opportunities</div>
@@ -493,7 +529,7 @@ const Dashboard = () => {
         </div>
       </div>
       
-      {/* Таблица арбитражных возможностей */}
+      {/* Таблица возможностей */}
       <table>
         <thead>
           <tr>
