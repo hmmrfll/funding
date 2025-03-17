@@ -9,7 +9,7 @@ const API_URL = 'http://91.239.206.123:10902/api';
 
 // Предполагаемые списки монет для фильтров MAX XP (пример)
 // В реальной имплементации эти данные должны приходить с API
-const NEW_COINS = ['JUP', 'PYTH', 'MANTA', 'RON', 'SEI', 'TAO', 'STRK', 'ZETA', 'BONK', 'BLUR'];
+const NEW_COINS = ['KAITO', 'IP', 'RED', 'RAY', 'OM', 'ELX'];
 const LOW_OI_THRESHOLD = 150000; // 150k USD
 const LOW_VOLUME_THRESHOLD = 500000; // 500k USD
 
@@ -408,19 +408,19 @@ useEffect(() => {
               onClick={() => setMaxXpFilter('new')}
               className={`btn btn-secondary ${maxXpFilter === 'new' ? 'active' : ''}`}
             >
-              New Coins
+              New Coins 🆕
             </button>
             <button
               onClick={() => setMaxXpFilter('lowOi')}
               className={`btn btn-secondary ${maxXpFilter === 'lowOi' ? 'active' : ''}`}
             >
-              Low OI (≤{formatDollars(LOW_OI_THRESHOLD)})
+              Low OI (≤{formatDollars(LOW_OI_THRESHOLD)}) 💰
             </button>
             <button
               onClick={() => setMaxXpFilter('lowVolume')}
               className={`btn btn-secondary ${maxXpFilter === 'lowVolume' ? 'active' : ''}`}
             >
-              Low Volume (≤{formatDollars(LOW_VOLUME_THRESHOLD)})
+              Low Volume (≤{formatDollars(LOW_VOLUME_THRESHOLD)}) 📊
             </button>
           </div>
         </div>
