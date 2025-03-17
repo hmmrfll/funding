@@ -57,7 +57,9 @@ module.exports = {
     'STRK', 'IMX', 'RUNE', 'FIL', 'LTC',
     
     // Новые и трендовые токены
-    'JUP', 'SEI', 'PYTH', 'TAO', 'MANTA'
+    'JUP', 'SEI', 'PYTH', 'TAO', 'MANTA',
+
+    'KAITO', 'IP', 'RED', 'RAY', 'OM', 'ELX'
   ],
   // Настройки ограничения запросов к API
   rateLimit: {
