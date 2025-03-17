@@ -542,7 +542,7 @@ router.get('/all-rates/:symbol', async (req, res, next) => {
 router.get('/asset-metrics', async (req, res, next) => {
   try {
     // Список "новых" монет для дополнительных XP
-    const newCoins = ['JUP', 'PYTH', 'MANTA', 'RON', 'SEI', 'TAO', 'STRK', 'ZETA', 'BONK', 'BLUR'];
+    const newCoins = ['KAITO', 'IP', 'RED', 'RAY', 'OM', 'ELX'];
     const LOW_OI_THRESHOLD = 150000; // 150k USD
     const LOW_VOLUME_THRESHOLD = 500000; // 500k USD
     
