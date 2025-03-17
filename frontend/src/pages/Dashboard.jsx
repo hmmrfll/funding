@@ -6,7 +6,7 @@ import axios from 'axios';
 
 // const API_URL = 'http://91.239.206.123:10902/api';
 // const API_URL = 'http://localhost:8034/api';
-const API_URL = 'api.hedgie.online';
+const API_URL = 'https://api.hedgie.online/api';
 
 
 // Предполагаемые списки монет для фильтров MAX XP (пример)

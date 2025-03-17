@@ -5,7 +5,8 @@ import axios from 'axios';
 
 // const API_URL = import.meta.env.VITE_API_URL_DEV;
 // const API_URL = 'http://localhost:8034/api';
-const API_URL = 'api.hedgie.online';
+const API_URL = 'https://api.hedgie.online/api';
+
 
 
 const AssetPage = () => {
