@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 
-const API_URL = 'http://91.239.206.123:10902/api';
+// const API_URL = 'http://91.239.206.123:10902/api';
 // const API_URL = 'http://localhost:8034/api';
+const API_URL = 'api.hedgie.online';
+
 
 // Предполагаемые списки монет для фильтров MAX XP (пример)
 // В реальной имплементации эти данные должны приходить с API
