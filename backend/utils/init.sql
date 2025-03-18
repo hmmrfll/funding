@@ -203,3 +203,30 @@ CREATE TABLE IF NOT EXISTS external_data (
 
 CREATE INDEX IF NOT EXISTS idx_external_data_source ON external_data(source);
 CREATE INDEX IF NOT EXISTS idx_external_data_created_at ON external_data(created_at);
+
+-- Таблица ставок фандинга OKX
+CREATE TABLE IF NOT EXISTS okx_funding_rates (
+    id SERIAL PRIMARY KEY,
+    asset_id INTEGER REFERENCES assets(id),
+    inst_id VARCHAR(20) NOT NULL,
+    funding_rate DECIMAL(16, 14) NOT NULL,
+    funding_time BIGINT,
+    next_funding_time BIGINT,
+    premium DECIMAL(16, 14),
+    sett_funding_rate DECIMAL(16, 14),
+    created_at BIGINT,
+    timestamp TIMESTAMP DEFAULT NOW(),
+    UNIQUE (asset_id, inst_id, funding_time)
+);
+
+CREATE INDEX IF NOT EXISTS idx_okx_asset_time ON okx_funding_rates(asset_id, funding_time);
+
+CREATE TABLE IF NOT EXISTS okx_asset_metadata (
+    id SERIAL PRIMARY KEY,
+    asset_id INTEGER REFERENCES assets(id),
+    inst_id VARCHAR(20) NOT NULL,
+    min_funding_rate DECIMAL(16, 14),
+    max_funding_rate DECIMAL(16, 14),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE (asset_id, inst_id)
+);

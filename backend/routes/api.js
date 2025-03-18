@@ -33,141 +33,151 @@ router.get('/history/:symbol', async (req, res, next) => {
       default:
         timeInterval = 'INTERVAL \'24 hours\'';
     }
-    
-    // Базовый запрос для получения данных о ставках с разных бирж
     let query = `
-      WITH asset_data AS (
-        SELECT id FROM assets WHERE symbol = $1
-      ),
-      time_series AS (
-        SELECT generate_series(
-          date_trunc('hour', NOW() - ${timeInterval}),
-          date_trunc('hour', NOW()),
-          '1 hour'::interval
-        ) AS time_point
-      ),
-      paradex_data AS (
-        SELECT 
-          'Paradex' as exchange1,
-          funding_rate as rate1,
-          date_trunc('hour', to_timestamp(created_at / 1000)) as time_point
-        FROM paradex_funding_rates
-        JOIN asset_data ON asset_data.id = paradex_funding_rates.asset_id
-        WHERE paradex_funding_rates.timestamp > NOW() - ${timeInterval}
-      ),
-      hyperliquid_data AS (
-        SELECT 
-          'HyperLiquid' as exchange2,
-          funding_rate as rate2,
-          date_trunc('hour', to_timestamp(created_at / 1000)) as time_point
-        FROM hyperliquid_funding_rates
-        JOIN asset_data ON asset_data.id = hyperliquid_funding_rates.asset_id
-        WHERE hyperliquid_funding_rates.timestamp > NOW() - ${timeInterval}
-      ),
-      binance_data AS (
-        SELECT 
-          'Binance' as exchange3,
-          funding_rate as rate3,
-          date_trunc('hour', to_timestamp(funding_time / 1000)) as time_point
-        FROM binance_funding_rates
-        JOIN asset_data ON asset_data.id = binance_funding_rates.asset_id
-        WHERE to_timestamp(funding_time / 1000) > NOW() - ${timeInterval}
-      ),
-      bybit_data AS (
-        SELECT 
-          'Bybit' as exchange4,
-          funding_rate as rate4,
-          date_trunc('hour', to_timestamp(funding_time / 1000)) as time_point
-        FROM bybit_funding_rates
-        JOIN asset_data ON asset_data.id = bybit_funding_rates.asset_id
-        WHERE to_timestamp(funding_time / 1000) > NOW() - ${timeInterval}
-      ),
-      dydx_data AS (
-        SELECT 
-          'DYDX' as exchange5,
-          funding_rate as rate5,
-          date_trunc('hour', to_timestamp(effective_at / 1000)) as time_point
-        FROM dydx_funding_rates
-        JOIN asset_data ON asset_data.id = dydx_funding_rates.asset_id
-        WHERE to_timestamp(effective_at / 1000) > NOW() - ${timeInterval}
-      )
-    `;
+    WITH asset_data AS (
+      SELECT id FROM assets WHERE symbol = $1
+    ),
+    time_series AS (
+      SELECT generate_series(
+        date_trunc('hour', NOW() - ${timeInterval}),
+        date_trunc('hour', NOW()),
+        '1 hour'::interval
+      ) AS time_point
+    ),
+    paradex_data AS (
+      SELECT 
+        'Paradex' as exchange1,
+        funding_rate as rate1,
+        date_trunc('hour', to_timestamp(created_at / 1000)) as time_point
+      FROM paradex_funding_rates
+      JOIN asset_data ON asset_data.id = paradex_funding_rates.asset_id
+      WHERE paradex_funding_rates.timestamp > NOW() - ${timeInterval}
+    ),
+    hyperliquid_data AS (
+      SELECT 
+        'HyperLiquid' as exchange2,
+        funding_rate as rate2,
+        date_trunc('hour', to_timestamp(created_at / 1000)) as time_point
+      FROM hyperliquid_funding_rates
+      JOIN asset_data ON asset_data.id = hyperliquid_funding_rates.asset_id
+      WHERE hyperliquid_funding_rates.timestamp > NOW() - ${timeInterval}
+    ),
+    binance_data AS (
+      SELECT 
+        'Binance' as exchange3,
+        funding_rate as rate3,
+        date_trunc('hour', to_timestamp(funding_time / 1000)) as time_point
+      FROM binance_funding_rates
+      JOIN asset_data ON asset_data.id = binance_funding_rates.asset_id
+      WHERE to_timestamp(funding_time / 1000) > NOW() - ${timeInterval}
+    ),
+    bybit_data AS (
+      SELECT 
+        'Bybit' as exchange4,
+        funding_rate as rate4,
+        date_trunc('hour', to_timestamp(funding_time / 1000)) as time_point
+      FROM bybit_funding_rates
+      JOIN asset_data ON asset_data.id = bybit_funding_rates.asset_id
+      WHERE to_timestamp(funding_time / 1000) > NOW() - ${timeInterval}
+    ),
+    dydx_data AS (
+      SELECT 
+        'DYDX' as exchange5,
+        funding_rate as rate5,
+        date_trunc('hour', to_timestamp(effective_at / 1000)) as time_point
+      FROM dydx_funding_rates
+      JOIN asset_data ON asset_data.id = dydx_funding_rates.asset_id
+      WHERE to_timestamp(effective_at / 1000) > NOW() - ${timeInterval}
+    ),
+    okx_data AS (
+      SELECT 
+        'OKX' as exchange6,
+        funding_rate as rate6,
+        date_trunc('hour', to_timestamp(funding_time / 1000)) as time_point
+      FROM okx_funding_rates
+      JOIN asset_data ON asset_data.id = okx_funding_rates.asset_id
+      WHERE to_timestamp(funding_time / 1000) > NOW() - ${timeInterval}
+    )
+  `;
+  
+  // Динамически формируем запрос в зависимости от выбранных бирж
+  const exchangesList = exchanges ? exchanges.split(',') : ['Paradex', 'HyperLiquid', 'Binance', 'Bybit', 'DYDX', 'OKX'];
+  
+  if (exchangesList.length === 2) {
+    const [exchange1, exchange2] = exchangesList;
     
-    // Динамически формируем запрос в зависимости от выбранных бирж
-    const exchangesList = exchanges ? exchanges.split(',') : ['Paradex', 'HyperLiquid', 'Binance', 'Bybit', 'DYDX'];
-    
-    if (exchangesList.length === 2) {
-      const [exchange1, exchange2] = exchangesList;
-      
-      // Формируем динамические части запроса на основе выбранных бирж
-      const getExchangeData = (exchange) => {
-        switch (exchange) {
-          case 'Paradex': return 'paradex_data';
-          case 'HyperLiquid': return 'hyperliquid_data';
-          case 'Binance': return 'binance_data';
-          case 'Bybit': return 'bybit_data';
-          case 'DYDX': return 'dydx_data';
-          default: return null;
-        }
-      };
-      
-      const exchange1Data = getExchangeData(exchange1);
-      const exchange2Data = getExchangeData(exchange2);
-      
-      if (exchange1Data && exchange2Data) {
-        query += `
-          SELECT 
-            '${symbol}' as symbol,
-            t.time_point as timestamp,
-            ex1.exchange1,
-            ex1.rate1,
-            ex2.exchange2,
-            ex2.rate2,
-            COALESCE(ex1.rate1, 0) - COALESCE(ex2.rate2, 0) as rate_difference,
-            (COALESCE(ex1.rate1, 0) - COALESCE(ex2.rate2, 0)) * 3 * 365 as annualized_return
-          FROM time_series t
-          LEFT JOIN ${exchange1Data} ex1 ON t.time_point = ex1.time_point
-          LEFT JOIN ${exchange2Data} ex2 ON t.time_point = ex2.time_point
-          WHERE ex1.rate1 IS NOT NULL OR ex2.rate2 IS NOT NULL
-          ORDER BY t.time_point ASC
-        `;
-      } else {
-        return res.status(400).json({ error: 'Invalid exchange selection' });
+    // Формируем динамические части запроса на основе выбранных бирж
+    const getExchangeData = (exchange) => {
+      switch (exchange) {
+        case 'Paradex': return 'paradex_data';
+        case 'HyperLiquid': return 'hyperliquid_data';
+        case 'Binance': return 'binance_data';
+        case 'Bybit': return 'bybit_data';
+        case 'DYDX': return 'dydx_data';
+        case 'OKX': return 'okx_data'; // Добавляем OKX
+        default: return null;
       }
-    } else {
-      // Если выбрано больше бирж или не указаны конкретные биржи
+    };
+    
+    const exchange1Data = getExchangeData(exchange1);
+    const exchange2Data = getExchangeData(exchange2);
+    
+    if (exchange1Data && exchange2Data) {
       query += `
         SELECT 
           '${symbol}' as symbol,
           t.time_point as timestamp,
-          p.exchange1 as paradex_exchange,
-          p.rate1 as paradex_rate,
-          h.exchange2 as hyperliquid_exchange,
-          h.rate2 as hyperliquid_rate,
-          b.exchange3 as binance_exchange,
-          b.rate3 as binance_rate,
-          bb.exchange4 as bybit_exchange,
-          bb.rate4 as bybit_rate,
-          d.exchange5 as dydx_exchange,
-          d.rate5 as dydx_rate
+          ex1.exchange1,
+          ex1.rate1,
+          ex2.exchange2,
+          ex2.rate2,
+          COALESCE(ex1.rate1, 0) - COALESCE(ex2.rate2, 0) as rate_difference,
+          (COALESCE(ex1.rate1, 0) - COALESCE(ex2.rate2, 0)) * 3 * 365 as annualized_return
         FROM time_series t
-        LEFT JOIN paradex_data p ON t.time_point = p.time_point
-        LEFT JOIN hyperliquid_data h ON t.time_point = h.time_point
-        LEFT JOIN binance_data b ON t.time_point = b.time_point
-        LEFT JOIN bybit_data bb ON t.time_point = bb.time_point
-        LEFT JOIN dydx_data d ON t.time_point = d.time_point
-        WHERE p.rate1 IS NOT NULL OR h.rate2 IS NOT NULL OR b.rate3 IS NOT NULL OR bb.rate4 IS NOT NULL OR d.rate5 IS NOT NULL
+        LEFT JOIN ${exchange1Data} ex1 ON t.time_point = ex1.time_point
+        LEFT JOIN ${exchange2Data} ex2 ON t.time_point = ex2.time_point
+        WHERE ex1.rate1 IS NOT NULL OR ex2.rate2 IS NOT NULL
         ORDER BY t.time_point ASC
       `;
+    } else {
+      return res.status(400).json({ error: 'Invalid exchange selection' });
     }
-    
-    const result = await db.query(query, [symbol]);
-    res.json(result.rows);
-  } catch (error) {
-    next(error);
+  } else {
+    // Если выбрано больше бирж или не указаны конкретные биржи
+    query += `
+      SELECT 
+        '${symbol}' as symbol,
+        t.time_point as timestamp,
+        p.exchange1 as paradex_exchange,
+        p.rate1 as paradex_rate,
+        h.exchange2 as hyperliquid_exchange,
+        h.rate2 as hyperliquid_rate,
+        b.exchange3 as binance_exchange,
+        b.rate3 as binance_rate,
+        bb.exchange4 as bybit_exchange,
+        bb.rate4 as bybit_rate,
+        d.exchange5 as dydx_exchange,
+        d.rate5 as dydx_rate,
+        o.exchange6 as okx_exchange,
+        o.rate6 as okx_rate
+      FROM time_series t
+      LEFT JOIN paradex_data p ON t.time_point = p.time_point
+      LEFT JOIN hyperliquid_data h ON t.time_point = h.time_point
+      LEFT JOIN binance_data b ON t.time_point = b.time_point
+      LEFT JOIN bybit_data bb ON t.time_point = bb.time_point
+      LEFT JOIN dydx_data d ON t.time_point = d.time_point
+      LEFT JOIN okx_data o ON t.time_point = o.time_point
+      WHERE p.rate1 IS NOT NULL OR h.rate2 IS NOT NULL OR b.rate3 IS NOT NULL OR bb.rate4 IS NOT NULL OR d.rate5 IS NOT NULL OR o.rate6 IS NOT NULL
+      ORDER BY t.time_point ASC
+    `;
   }
+  
+  const result = await db.query(query, [symbol]);
+  res.json(result.rows);
+} catch (error) {
+  next(error);
+}
 });
-            
 
 // 3. Получение списка доступных активов
 router.get('/assets', async (req, res, next) => {
@@ -239,7 +249,6 @@ router.get('/rates/:symbol', async (req, res, next) => {
   try {
     const { symbol } = req.params;
     
-    // Исправлено: добавлены алиасы таблиц для избежания неоднозначности столбцов и добавлены новые биржи
     const query = `
       WITH p_latest AS (
         SELECT 
@@ -292,6 +301,16 @@ router.get('/rates/:symbol', async (req, res, next) => {
         FROM dydx_funding_rates
         JOIN assets ON assets.id = dydx_funding_rates.asset_id
         WHERE assets.symbol = $1
+      ),
+      o_latest AS (
+        SELECT 
+          asset_id,
+          funding_rate,
+          okx_funding_rates.created_at,
+          ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY okx_funding_rates.created_at DESC) AS rn
+        FROM okx_funding_rates
+        JOIN assets ON assets.id = okx_funding_rates.asset_id
+        WHERE assets.symbol = $1
       )
       SELECT 
         a.symbol,
@@ -301,13 +320,15 @@ router.get('/rates/:symbol', async (req, res, next) => {
         h.premium AS hyperliquid_premium,
         b.funding_rate AS binance_rate,
         bb.funding_rate AS bybit_rate,
-        d.funding_rate AS dydx_rate
+        d.funding_rate AS dydx_rate,
+        o.funding_rate AS okx_rate
       FROM assets a
       LEFT JOIN p_latest p ON a.id = p.asset_id AND p.rn = 1
       LEFT JOIN h_latest h ON a.id = h.asset_id AND h.rn = 1
       LEFT JOIN b_latest b ON a.id = b.asset_id AND b.rn = 1
       LEFT JOIN bb_latest bb ON a.id = bb.asset_id AND bb.rn = 1
       LEFT JOIN d_latest d ON a.id = d.asset_id AND d.rn = 1
+      LEFT JOIN o_latest o ON a.id = o.asset_id AND o.rn = 1
       WHERE a.symbol = $1
     `;
     
@@ -395,13 +416,18 @@ router.get('/metadata/:symbol', async (req, res, next) => {
         -- Bybit метаданные
         bbm.category as bybit_category,
         -- DYDX метаданные
-        dm.ticker as dydx_ticker
+        dm.ticker as dydx_ticker,
+        -- OKX метаданные
+        om.inst_id as okx_inst_id,
+        om.min_funding_rate as okx_min_funding_rate,
+        om.max_funding_rate as okx_max_funding_rate
       FROM assets a
       LEFT JOIN paradex_asset_metadata pm ON a.id = pm.asset_id
       LEFT JOIN hyperliquid_asset_metadata hm ON a.id = hm.asset_id
       LEFT JOIN binance_asset_metadata bm ON a.id = bm.asset_id
       LEFT JOIN bybit_asset_metadata bbm ON a.id = bbm.asset_id
       LEFT JOIN dydx_asset_metadata dm ON a.id = dm.asset_id
+      LEFT JOIN okx_asset_metadata om ON a.id = om.asset_id
       WHERE a.symbol = $1
     `;
     
@@ -511,6 +537,16 @@ router.get('/all-rates/:symbol', async (req, res, next) => {
         WHERE asset_id = (SELECT id FROM asset_id)
         ORDER BY effective_at DESC
         LIMIT 1
+      ),
+      okx_latest AS (
+        SELECT 
+          'OKX' as exchange,
+          funding_rate,
+          created_at
+        FROM okx_funding_rates
+        WHERE asset_id = (SELECT id FROM asset_id)
+        ORDER BY created_at DESC
+        LIMIT 1
       )
       SELECT * FROM (
         SELECT * FROM paradex_latest
@@ -522,6 +558,8 @@ router.get('/all-rates/:symbol', async (req, res, next) => {
         SELECT * FROM bybit_latest
         UNION ALL
         SELECT * FROM dydx_latest
+        UNION ALL
+        SELECT * FROM okx_latest
       ) rates
       WHERE funding_rate IS NOT NULL
     `;
@@ -537,6 +575,7 @@ router.get('/all-rates/:symbol', async (req, res, next) => {
     next(error);
   }
 });
+
 
 // Получение метрик для MAX XP фильтров
 router.get('/asset-metrics', async (req, res, next) => {

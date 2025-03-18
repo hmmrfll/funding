@@ -8,6 +8,8 @@ const hyperliquidService = require('../services/hyperliquidService');
 const binanceService = require('../services/binanceService');
 const bybitService = require('../services/bybitService');
 const dydxService = require('../services/dydxService');
+const okxService = require('../services/okxService');
+
 // Получаем список основных активов из конфигурации
 const TOP_ASSETS = config.topAssets;
 
@@ -220,6 +222,48 @@ async function updateBinanceData() {
   }
 }
 
+async function updateOkxData() {
+  try {
+    console.log('Обновление данных OKX...');
+    
+    // Получаем список активов для запроса
+    const instruments = TOP_ASSETS.map(asset => `${asset}-USDT-SWAP`);
+    
+    // Для каждого инструмента получаем и сохраняем данные о фандинге
+    let totalSavedFunding = 0;
+    
+    // Создаем список обещаний для параллельного выполнения запросов
+    const promises = instruments.map(async (instId) => {
+      try {
+        // Делаем паузу между запросами, чтобы не превышать ограничение API
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const fundingData = await okxService.getFundingRates(instId);
+        
+        if (fundingData.length > 0) {
+          const savedCount = await okxService.saveFundingData(fundingData);
+          return savedCount;
+        }
+        return 0;
+      } catch (error) {
+        console.error(`Ошибка при получении данных о фандинге для ${instId}:`, error);
+        return 0;
+      }
+    });
+    
+    // Дожидаемся всех запросов и суммируем результаты
+    const results = await Promise.all(promises);
+    totalSavedFunding = results.reduce((sum, count) => sum + count, 0);
+    
+    console.log(`Всего сохранено ${totalSavedFunding} записей о фандинге с OKX`);
+    return totalSavedFunding;
+  } catch (error) {
+    console.error('Ошибка при обновлении данных OKX:', error);
+    return 0;
+  }
+}
+
+
 // Функция обновления данных всех бирж
 async function updateExchangeData() {
   try {
@@ -231,7 +275,7 @@ async function updateExchangeData() {
       updateHyperliquidData(),
       updateBinanceData(),
       updateBybitData(),
-      // DYDX исключен, т.к. нет реальных данных
+      updateOkxData(),
     ]);
     
     // Рассчитываем арбитражные возможности
@@ -240,7 +284,11 @@ async function updateExchangeData() {
         (hyperliquidResult > 0 && binanceResult > 0) ||
         (bybitResult > 0 && paradexResult > 0) ||
         (bybitResult > 0 && hyperliquidResult > 0) ||
-        (bybitResult > 0 && binanceResult > 0)) {
+        (bybitResult > 0 && binanceResult > 0) ||
+        (okxResult > 0 && paradexResult > 0) ||
+        (okxResult > 0 && hyperliquidResult > 0) ||
+        (okxResult > 0 && binanceResult > 0) ||
+        (okxResult > 0 && bybitResult > 0)) {
       const opportunities = await arbitrageService.calculateArbitrageOpportunities();
       console.log(`Рассчитано ${opportunities.length} арбитражных возможностей`);
     }
@@ -295,5 +343,6 @@ module.exports = {
   updateParadexData,
   updateHyperliquidData,
   updateBinanceData,
-  updateBybitData
+  updateBybitData,
+  updateOkxData
 };

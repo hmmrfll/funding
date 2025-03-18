@@ -4,8 +4,8 @@ import { useParams, useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
 
 // const API_URL = import.meta.env.VITE_API_URL_DEV;
-// const API_URL = 'http://localhost:8034/api';
-const API_URL = 'https://api.hedgie.online/api';
+const API_URL = 'http://localhost:8034/api';
+// const API_URL = 'https://api.hedgie.online/api';
 
 
 
@@ -362,20 +362,33 @@ const AssetPage = () => {
                 </div>
               )}
               
-              {/* DYDX Parameters */}
-              {metadata.dydx_ticker && (
-                <div>
-                  <h4 style={{fontSize: '14px', color: '#6966ff', marginBottom: '5px'}}>DYDX</h4>
-                  <table>
+              {/* OKX Parameters */}
+              {metadata.okx_inst_id && (
+                <div style={{marginBottom: '15px'}}>
+                  <h4 style={{fontSize: '14px', color: '#1e88e5', marginBottom: '5px'}}>OKX</h4>
+                  <table style={{marginBottom: '15px'}}>
                     <tbody>
                       <tr>
-                        <td>Ticker</td>
-                        <td>{metadata.dydx_ticker}</td>
+                        <td>Instrument ID</td>
+                        <td>{metadata.okx_inst_id}</td>
                       </tr>
+                      {metadata.okx_min_funding_rate && (
+                        <tr>
+                          <td>Min Rate</td>
+                          <td>{formatPercent(metadata.okx_min_funding_rate)}</td>
+                        </tr>
+                      )}
+                      {metadata.okx_max_funding_rate && (
+                        <tr>
+                          <td>Max Rate</td>
+                          <td>{formatPercent(metadata.okx_max_funding_rate)}</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
               )}
+              
             </div>
           </div>
         </div>

@@ -33,6 +33,10 @@ module.exports = {
     dydx: {
       baseUrl: process.env.DYDX_API_URL || 'https://indexer.dydx.trade/v4',
     },
+    
+    okx: {
+      baseUrl: process.env.OKX_API_URL || 'https://www.okx.com',
+    },
   },
   scheduler: {
     interval: process.env.SCHEDULER_INTERVAL || '*/5 * * * *', // Каждые 5 минут по умолчанию

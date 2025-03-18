@@ -13,70 +13,84 @@ class ArbitrageService {
       
       // Получаем последние ставки фандинга со всех бирж
       const query = `
-        WITH paradex_latest AS (
-          SELECT 
-            asset_id, 
-            funding_rate,
-            ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY created_at DESC) as rn
-          FROM paradex_funding_rates
-        ),
-        hyperliquid_latest AS (
-          SELECT 
-            asset_id, 
-            funding_rate,
-            ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY created_at DESC) as rn
-          FROM hyperliquid_funding_rates
-        ),
-        binance_latest AS (
-          SELECT 
-            asset_id, 
-            funding_rate,
-            ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY created_at DESC) as rn
-          FROM binance_funding_rates
-        ),
-        bybit_latest AS (
-          SELECT 
-            asset_id, 
-            funding_rate,
-            ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY created_at DESC) as rn
-          FROM bybit_funding_rates
-        ),
-        dydx_latest AS (
-          SELECT 
-            asset_id, 
-            funding_rate,
-            ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY effective_at DESC) as rn
-          FROM dydx_funding_rates
-        )
+      WITH paradex_latest AS (
         SELECT 
-          a.id as asset_id,
-          a.symbol,
-          p.funding_rate as paradex_rate,
-          h.funding_rate as hyperliquid_rate,
-          b.funding_rate as binance_rate,
-          bb.funding_rate as bybit_rate,
-          d.funding_rate as dydx_rate
-        FROM assets a
-        LEFT JOIN paradex_latest p ON a.id = p.asset_id AND p.rn = 1
-        LEFT JOIN hyperliquid_latest h ON a.id = h.asset_id AND h.rn = 1
-        LEFT JOIN binance_latest b ON a.id = b.asset_id AND b.rn = 1
-        LEFT JOIN bybit_latest bb ON a.id = bb.asset_id AND bb.rn = 1
-        LEFT JOIN dydx_latest d ON a.id = d.asset_id AND d.rn = 1
-        WHERE a.is_active = TRUE
-        AND (
-          (p.funding_rate IS NOT NULL AND h.funding_rate IS NOT NULL) OR
-          (p.funding_rate IS NOT NULL AND b.funding_rate IS NOT NULL) OR
-          (h.funding_rate IS NOT NULL AND b.funding_rate IS NOT NULL) OR
-          (p.funding_rate IS NOT NULL AND bb.funding_rate IS NOT NULL) OR
-          (h.funding_rate IS NOT NULL AND bb.funding_rate IS NOT NULL) OR
-          (b.funding_rate IS NOT NULL AND bb.funding_rate IS NOT NULL) OR
-          (p.funding_rate IS NOT NULL AND d.funding_rate IS NOT NULL) OR
-          (h.funding_rate IS NOT NULL AND d.funding_rate IS NOT NULL) OR
-          (b.funding_rate IS NOT NULL AND d.funding_rate IS NOT NULL) OR
-          (bb.funding_rate IS NOT NULL AND d.funding_rate IS NOT NULL) OR
-          (d.funding_rate IS NOT NULL AND bb.funding_rate IS NOT NULL)
-        )
-      `;
+          asset_id, 
+          funding_rate,
+          ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY created_at DESC) as rn
+        FROM paradex_funding_rates
+      ),
+      hyperliquid_latest AS (
+        SELECT 
+          asset_id, 
+          funding_rate,
+          ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY created_at DESC) as rn
+        FROM hyperliquid_funding_rates
+      ),
+      binance_latest AS (
+        SELECT 
+          asset_id, 
+          funding_rate,
+          ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY created_at DESC) as rn
+        FROM binance_funding_rates
+      ),
+      bybit_latest AS (
+        SELECT 
+          asset_id, 
+          funding_rate,
+          ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY created_at DESC) as rn
+        FROM bybit_funding_rates
+      ),
+      dydx_latest AS (
+        SELECT 
+          asset_id, 
+          funding_rate,
+          ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY effective_at DESC) as rn
+        FROM dydx_funding_rates
+      ),
+      okx_latest AS (
+        SELECT 
+          asset_id, 
+          funding_rate,
+          ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY created_at DESC) as rn
+        FROM okx_funding_rates
+      )
+      SELECT 
+        a.id as asset_id,
+        a.symbol,
+        p.funding_rate as paradex_rate,
+        h.funding_rate as hyperliquid_rate,
+        b.funding_rate as binance_rate,
+        bb.funding_rate as bybit_rate,
+        d.funding_rate as dydx_rate,
+        o.funding_rate as okx_rate
+      FROM assets a
+      LEFT JOIN paradex_latest p ON a.id = p.asset_id AND p.rn = 1
+      LEFT JOIN hyperliquid_latest h ON a.id = h.asset_id AND h.rn = 1
+      LEFT JOIN binance_latest b ON a.id = b.asset_id AND b.rn = 1
+      LEFT JOIN bybit_latest bb ON a.id = bb.asset_id AND bb.rn = 1
+      LEFT JOIN dydx_latest d ON a.id = d.asset_id AND d.rn = 1
+      LEFT JOIN okx_latest o ON a.id = o.asset_id AND o.rn = 1
+      WHERE a.is_active = TRUE
+      AND (
+        (p.funding_rate IS NOT NULL AND h.funding_rate IS NOT NULL) OR
+        (p.funding_rate IS NOT NULL AND b.funding_rate IS NOT NULL) OR
+        (h.funding_rate IS NOT NULL AND b.funding_rate IS NOT NULL) OR
+        (p.funding_rate IS NOT NULL AND bb.funding_rate IS NOT NULL) OR
+        (h.funding_rate IS NOT NULL AND bb.funding_rate IS NOT NULL) OR
+        (b.funding_rate IS NOT NULL AND bb.funding_rate IS NOT NULL) OR
+        (p.funding_rate IS NOT NULL AND d.funding_rate IS NOT NULL) OR
+        (h.funding_rate IS NOT NULL AND d.funding_rate IS NOT NULL) OR
+        (b.funding_rate IS NOT NULL AND d.funding_rate IS NOT NULL) OR
+        (bb.funding_rate IS NOT NULL AND d.funding_rate IS NOT NULL) OR
+        (d.funding_rate IS NOT NULL AND bb.funding_rate IS NOT NULL) OR
+        (p.funding_rate IS NOT NULL AND o.funding_rate IS NOT NULL) OR
+        (h.funding_rate IS NOT NULL AND o.funding_rate IS NOT NULL) OR
+        (b.funding_rate IS NOT NULL AND o.funding_rate IS NOT NULL) OR
+        (bb.funding_rate IS NOT NULL AND o.funding_rate IS NOT NULL) OR
+        (d.funding_rate IS NOT NULL AND o.funding_rate IS NOT NULL)
+      )
+    `;
       
       const result = await db.query(query);
       
@@ -121,26 +135,6 @@ class ArbitrageService {
           );
         }
         
-        // HyperLiquid - Binance
-        if (row.hyperliquid_rate !== null && row.binance_rate !== null) {
-          const diff = row.hyperliquid_rate - row.binance_rate;
-          const strategy = diff > 0 
-            ? 'Long on Binance, Short on HyperLiquid' 
-            : 'Long on HyperLiquid, Short on Binance';
-          
-          await this.saveArbitrageOpportunity(
-            row.asset_id, 
-            'HyperLiquid', 
-            'Binance', 
-            row.hyperliquid_rate, 
-            row.binance_rate, 
-            diff, 
-            diff * 3 * 365, 
-            strategy
-          );
-        }
-        
-        // НОВЫЕ ПАРЫ С BYBIT
         
         // Paradex - Bybit
         if (row.paradex_rate !== null && row.bybit_rate !== null) {
@@ -161,126 +155,24 @@ class ArbitrageService {
           );
         }
         
-        // HyperLiquid - Bybit
-        if (row.hyperliquid_rate !== null && row.bybit_rate !== null) {
-          const diff = row.hyperliquid_rate - row.bybit_rate;
+        if (row.paradex_rate !== null && row.okx_rate !== null) {
+          const diff = row.paradex_rate - row.okx_rate;
           const strategy = diff > 0 
-            ? 'Long on Bybit, Short on HyperLiquid' 
-            : 'Long on HyperLiquid, Short on Bybit';
-          
-          await this.saveArbitrageOpportunity(
-            row.asset_id, 
-            'HyperLiquid', 
-            'Bybit', 
-            row.hyperliquid_rate, 
-            row.bybit_rate, 
-            diff, 
-            diff * 3 * 365, 
-            strategy
-          );
-        }
-        
-        // Binance - Bybit
-        if (row.binance_rate !== null && row.bybit_rate !== null) {
-          const diff = row.binance_rate - row.bybit_rate;
-          const strategy = diff > 0 
-            ? 'Long on Bybit, Short on Binance' 
-            : 'Long on Binance, Short on Bybit';
-          
-          await this.saveArbitrageOpportunity(
-            row.asset_id, 
-            'Binance', 
-            'Bybit', 
-            row.binance_rate, 
-            row.bybit_rate, 
-            diff, 
-            diff * 3 * 365, 
-            strategy
-          );
-        }
-        
-        // НОВЫЕ ПАРЫ С DYDX
-        
-        if (row.dydx_rate === 0 || row.dydx_rate === null) {
-          console.log(`Пропускаем DYDX для ${row.symbol} из-за нулевой ставки фандинга`);
-          continue;
-        }
-        // Paradex - DYDX
-        if (row.paradex_rate !== null && row.dydx_rate !== null) {
-          // In the calculateArbitrageOpportunities method, before calculating diff:
-          const diff = row.paradex_rate - row.dydx_rate;
-          const strategy = diff > 0 
-            ? 'Long on DYDX, Short on Paradex' 
-            : 'Long on Paradex, Short on DYDX';
+            ? 'Long on OKX, Short on Paradex' 
+            : 'Long on Paradex, Short on OKX';
           
           await this.saveArbitrageOpportunity(
             row.asset_id, 
             'Paradex', 
-            'DYDX', 
+            'OKX', 
             row.paradex_rate, 
-            row.dydx_rate, 
+            row.okx_rate, 
             diff, 
-            diff * 3 * 365, 
+            diff * 3 * 365, // Предполагаем фандинг каждые 8 часов, как у большинства бирж
             strategy
           );
         }
         
-        // HyperLiquid - DYDX
-        if (row.hyperliquid_rate !== null && row.dydx_rate !== null) {
-          const diff = row.hyperliquid_rate - row.dydx_rate;
-          const strategy = diff > 0 
-            ? 'Long on DYDX, Short on HyperLiquid' 
-            : 'Long on HyperLiquid, Short on DYDX';
-          
-          await this.saveArbitrageOpportunity(
-            row.asset_id, 
-            'HyperLiquid', 
-            'DYDX', 
-            row.hyperliquid_rate, 
-            row.dydx_rate, 
-            diff, 
-            diff * 3 * 365, 
-            strategy
-          );
-        }
-        
-        // Binance - DYDX
-        if (row.binance_rate !== null && row.dydx_rate !== null) {
-          const diff = row.binance_rate - row.dydx_rate;
-          const strategy = diff > 0 
-            ? 'Long on DYDX, Short on Binance' 
-            : 'Long on Binance, Short on DYDX';
-          
-          await this.saveArbitrageOpportunity(
-            row.asset_id, 
-            'Binance', 
-            'DYDX', 
-            row.binance_rate, 
-            row.dydx_rate, 
-            diff, 
-            diff * 3 * 365, 
-            strategy
-          );
-        }
-        
-        // Bybit - DYDX
-        if (row.bybit_rate !== null && row.dydx_rate !== null) {
-          const diff = row.bybit_rate - row.dydx_rate;
-          const strategy = diff > 0 
-            ? 'Long on DYDX, Short on Bybit' 
-            : 'Long on Bybit, Short on DYDX';
-          
-          await this.saveArbitrageOpportunity(
-            row.asset_id, 
-            'Bybit', 
-            'DYDX', 
-            row.bybit_rate, 
-            row.dydx_rate, 
-            diff, 
-            diff * 3 * 365, 
-            strategy
-          );
-        }
       }
       
       console.log(`Найдено ${result.rows.length} активов для арбитража`);
