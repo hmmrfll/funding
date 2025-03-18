@@ -11,7 +11,7 @@ class BinanceService {
 
   async getFundingRates(symbol = null, limit = 100) {
     try {
-      console.log(`Запрос истории ставок фандинга с Binance API`);
+
       const params = { limit };
       if (symbol) params.symbol = symbol;
       
@@ -31,7 +31,7 @@ class BinanceService {
 
   async getFundingInfo() {
     try {
-      console.log(`Запрос информации о фандинге с Binance API`);
+
       const response = await axios.get(`${this.baseUrl}/fapi/v1/fundingInfo`);
       
       if (!response.data || !Array.isArray(response.data)) {

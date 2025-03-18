@@ -4,8 +4,8 @@ import { useParams, useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
 
 // const API_URL = import.meta.env.VITE_API_URL_DEV;
-const API_URL = 'http://localhost:8034/api';
-// const API_URL = 'https://api.hedgie.online/api';
+// const API_URL = 'http://localhost:8034/api';
+const API_URL = 'https://api.hedgie.online/api';
 
 
 
@@ -43,7 +43,7 @@ const AssetPage = () => {
           
           // Если есть предпочтительная биржа из URL и она доступна вместе с Paradex
           if (paradexAvailable && preferredAvailable) {
-            console.log(`Используем предпочтительную пару: Paradex-${preferredExchange}`);
+
             setSelectedExchanges(['Paradex', preferredExchange]);
           } else {
             // Если нет предпочтения или оно недоступно, ищем сохраненную пару
@@ -53,7 +53,7 @@ const AssetPage = () => {
                                           ratesRes.data.some(rate => rate.exchange === savedComparisonExchange);
             
             if (paradexAvailable && savedExchangeAvailable) {
-              console.log(`Используем сохраненную пару: Paradex-${savedComparisonExchange}`);
+
               setSelectedExchanges(['Paradex', savedComparisonExchange]);
             } else {
               // Если нет сохраненных настроек, ищем лучшую арбитражную возможность
@@ -66,7 +66,7 @@ const AssetPage = () => {
                 );
                 
                 const bestOpportunity = symbolOpportunities[0];
-                console.log(`Найдена лучшая возможность для ${symbol}: ${bestOpportunity.exchange1}-${bestOpportunity.exchange2} с разницей ${bestOpportunity.rate_difference}`);
+
                 
                 setSelectedExchanges([bestOpportunity.exchange1, bestOpportunity.exchange2]);
               } else {
@@ -401,7 +401,7 @@ const AssetPage = () => {
           
           <div style={{
             padding: '15px',
-            background: '#1a1a1a',
+            background: 'var(--bg-secondary)',
             borderRadius: '4px',
             marginBottom: '15px'
           }}>

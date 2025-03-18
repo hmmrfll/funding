@@ -2,12 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Ваши другие стили... */
-body {
-  margin: 0;
-  background-color: #0f172a;
-  color: #e2e8f0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+/* Ваши переменные для темы */
+:root {
+  --transition-speed: 0.2s;
+  --gradient-start: #58a6ff;
+  --gradient-end: #9c27b0;
+}
+
+/* Темная тема - используется по умолчанию */
+:root[data-theme="dark"] {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-card: #21262d;
+  --bg-card-hover: #30363d;
+  --bg-input: #0d1117;
+  --bg-button: #238636;
+  --bg-button-hover: #2ea043;
+  --text-primary: #f0f6fc;
+  --text-secondary: #c9d1d9;
+  --text-muted: #8b949e;
+  --border-color: #30363d;
+  --positive: #3fb950;
+  --negative: #f85149;
+  --accent: #58a6ff;
+  --accent-hover: #79c0ff;
+  --card-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --scrollbar-track: #1e293b;
+  --scrollbar-thumb: #475569;
+  --scrollbar-thumb-hover: #64748b;
+}
+
+/* Светлая тема */
+:root[data-theme="light"] {
+  --bg-primary: #f6f8fa;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f0f2f4;
+  --bg-input: #f6f8fa;
+  --bg-button: #2ea043;
+  --bg-button-hover: #3fb950;
+  --text-primary: #24292e;
+  --text-secondary: #586069;
+  --text-muted: #6a737d;
+  --border-color: #e1e4e8;
+  --positive: #22863a;
+  --negative: #cb2431;
+  --accent: #0366d6;
+  --accent-hover: #035fc7;
+  --card-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  --scrollbar-track: #f6f8fa;
+  --scrollbar-thumb: #d1d5da;
+  --scrollbar-thumb-hover: #a0a5aa;
 }
 
 /* Стилизация скроллбара */
@@ -17,14 +62,80 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: var(--scrollbar-track);
 }
  
 ::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: var(--scrollbar-thumb);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Переопределение некоторых стилей Tailwind */
+@layer base {
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    transition: background-color var(--transition-speed), color var(--transition-speed);
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+  }
+  
+  a {
+    color: var(--accent);
+  }
+}
+
+/* Дополнительные стили для плавного перехода между темами */
+* {
+  transition: background-color var(--transition-speed), 
+              color var(--transition-speed), 
+              border-color var(--transition-speed),
+              box-shadow var(--transition-speed);
+}
+
+/* Стили для переключателя темы */
+.theme-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all var(--transition-speed);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.theme-toggle-btn:hover {
+  background-color: var(--bg-card-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.theme-toggle-btn:active {
+  transform: translateY(0);
+}
+
+/* Пользовательские утилиты Tailwind */
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .bg-gradient {
+    background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+  }
 }

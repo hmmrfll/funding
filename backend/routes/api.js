@@ -5,7 +5,7 @@ const db = require('../config/db');
 const arbitrageService = require('../services/arbitrageService');
 const scheduler = require('../utils/scheduler');
 
-// 1. Получение текущих арбитражных возможностей
+// Получение текущих арбитражных возможностей
 router.get('/opportunities', async (req, res, next) => {
   try {
     const opportunities = await arbitrageService.getLatestOpportunities();
@@ -15,7 +15,6 @@ router.get('/opportunities', async (req, res, next) => {
   }
 });
 
-// 2. Получение исторических данных по конкретному активу
 // Получение исторических данных по конкретному активу
 router.get('/history/:symbol', async (req, res, next) => {
   try {
@@ -179,7 +178,7 @@ router.get('/history/:symbol', async (req, res, next) => {
 }
 });
 
-// 3. Получение списка доступных активов
+// Получение списка доступных активов
 router.get('/assets', async (req, res, next) => {
   try {
     const query = `
@@ -203,8 +202,7 @@ router.get('/assets', async (req, res, next) => {
   }
 });
 
-// 4. Получение статистики арбитража
-// 4. Получение статистики арбитража
+// Получение статистики арбитража
 router.get('/statistics', async (req, res, next) => {
   try {
     const { period = 'day' } = req.query;
@@ -243,7 +241,6 @@ router.get('/statistics', async (req, res, next) => {
   }
 });
 
-// 5. Получение данных о текущих ставках фандинга
 // Получение данных о текущих ставках фандинга
 router.get('/rates/:symbol', async (req, res, next) => {
   try {
@@ -344,7 +341,7 @@ router.get('/rates/:symbol', async (req, res, next) => {
   }
 });
 
-// 6. Принудительное обновление данных
+// Принудительное обновление данных
 router.post('/update', async (req, res, next) => {
   try {
     await scheduler.updateExchangeData();
@@ -355,8 +352,7 @@ router.post('/update', async (req, res, next) => {
   }
 });
 
-// 7. Получение топ-N арбитражных возможностей
-// 7. Получение топ-N арбитражных возможностей
+// Получение топ-N арбитражных возможностей
 router.get('/top-opportunities', async (req, res, next) => {
   try {
     const { limit = 100 } = req.query;
@@ -385,8 +381,6 @@ router.get('/top-opportunities', async (req, res, next) => {
   }
 });
 
-
-// 8. Получение метаданных по активам
 // Получение метаданных по активам
 router.get('/metadata/:symbol', async (req, res, next) => {
   try {
@@ -443,7 +437,7 @@ router.get('/metadata/:symbol', async (req, res, next) => {
   }
 });
 
-// 9. Получение прогнозируемых ставок фандинга
+// Получение прогнозируемых ставок фандинга
 router.get('/predicted-rates/:symbol', async (req, res, next) => {
   try {
     const { symbol } = req.params;
@@ -478,7 +472,6 @@ router.get('/predicted-rates/:symbol', async (req, res, next) => {
   }
 });
 
-// Получение ставок фандинга со всех бирж для конкретного актива
 // Получение ставок фандинга со всех бирж для конкретного актива
 router.get('/all-rates/:symbol', async (req, res, next) => {
   try {
@@ -576,8 +569,7 @@ router.get('/all-rates/:symbol', async (req, res, next) => {
   }
 });
 
-
-// Получение метрик для MAX XP фильтров
+// Получение метрик для MAX XP фильтров - оптимизированная версия
 router.get('/asset-metrics', async (req, res, next) => {
   try {
     // Список "новых" монет для дополнительных XP
@@ -585,18 +577,21 @@ router.get('/asset-metrics', async (req, res, next) => {
     const LOW_OI_THRESHOLD = 150000; // 150k USD
     const LOW_VOLUME_THRESHOLD = 500000; // 500k USD
     
-    // Проверяем наличие данных в таблице
+    // Используем кэширование для повышения производительности
+    // Проверяем наличие последних данных (не старше 30 минут)
     const checkQuery = `
-      SELECT COUNT(*) as count
+      SELECT id, content, created_at 
       FROM external_data
       WHERE source = 'paradex_markets_summary'
+      ORDER BY created_at DESC
+      LIMIT 1
     `;
     
     const checkResult = await db.query(checkQuery);
-    const hasData = parseInt(checkResult.rows[0].count) > 0;
+    const hasRecentData = checkResult.rows.length > 0 && 
+                           (new Date() - new Date(checkResult.rows[0].created_at) < 30*60*1000);
     
-    if (!hasData) {
-      console.log('Нет данных о статистике рынков Paradex. Выполняем запрос API...');
+    if (!hasRecentData) {
       try {
         // Запрашиваем данные и сохраняем их
         const paradexService = require('../services/paradexService');
@@ -607,104 +602,70 @@ router.get('/asset-metrics', async (req, res, next) => {
             `INSERT INTO external_data (source, content) VALUES ($1, $2)`,
             ['paradex_markets_summary', JSON.stringify(marketsSummary)]
           );
-          console.log(`Получено и сохранено ${marketsSummary.length} записей о статистике рынков с Paradex`);
+          
+          // Используем только что полученные данные
+          processMarketData(marketsSummary);
         } else {
           throw new Error("Не удалось получить данные с Paradex API");
         }
       } catch (apiError) {
         console.error('Ошибка при получении данных с Paradex API:', apiError);
+        
+        // Если есть старые данные, используем их вместо ошибки
+        if (checkResult.rows.length > 0) {
+          const marketsSummary = JSON.parse(checkResult.rows[0].content);
+          processMarketData(marketsSummary);
+          return;
+        }
+        
         return res.status(500).json({ 
           status: 'error', 
           message: 'Не удалось получить данные о статистике рынков' 
         });
       }
+    } else {
+      // Используем последние данные из базы
+      const marketsSummary = JSON.parse(checkResult.rows[0].content);
+      processMarketData(marketsSummary);
     }
     
-    // Получаем последние данные о статистике рынков
-    const query = `
-      WITH latest_data AS (
-        SELECT id, content
-        FROM external_data
-        WHERE source = 'paradex_markets_summary'
-        ORDER BY created_at DESC
-        LIMIT 1
-      )
-      SELECT content FROM latest_data
-    `;
-    
-    const result = await db.query(query);
-    
-    if (!result.rows.length) {
-      throw new Error('Данные о статистике рынков Paradex не найдены');
-    }
-    
-    // Парсим JSON данные
-    const marketsSummary = JSON.parse(result.rows[0].content);
-    
-    // Преобразуем в объект с данными по символам
-    const metricsMap = {};
-    
-    // Обрабатываем только бессрочные контракты (PERP)
-    marketsSummary.forEach(marketData => {
-      if (marketData.symbol && (marketData.symbol.endsWith('-PERP') || marketData.symbol.includes('-USD-PERP'))) {
-        // Извлекаем базовый символ (например, BTC-USD-PERP -> BTC)
-        const baseSymbol = marketData.symbol.split('-')[0];
-        
-        // Вычисляем OI в USD
-        const openInterest = parseFloat(marketData.open_interest || 0);
-        const markPrice = parseFloat(marketData.mark_price || 0);
-        const openInterestUsd = openInterest * markPrice;
-        
-        // Объем в USD
-        const volume = parseFloat(marketData.volume_24h || 0);
-        
-        metricsMap[baseSymbol] = {
-          openInterest: openInterestUsd,
-          volume: volume,
-          isNew: newCoins.includes(baseSymbol),
-          hasLowOi: openInterestUsd <= LOW_OI_THRESHOLD,
-          hasLowVolume: volume <= LOW_VOLUME_THRESHOLD
-        };
-      }
-    });
-    
-    // Получаем список всех активных активов для дополнения данных
-    const assetsQuery = `SELECT symbol FROM assets WHERE is_active = TRUE`;
-    const assetsResult = await db.query(assetsQuery);
-    
-    // Создаем объект метрик для всех активов
-    const metrics = {};
-    assetsResult.rows.forEach(asset => {
-      const symbol = asset.symbol;
+    // Функция для обработки данных рынка и отправки ответа
+    function processMarketData(marketsSummary) {
+      // Преобразуем в объект с данными по символам
+      const metricsMap = {};
       
-      // Если у нас есть данные для этого актива, используем их
-      if (metricsMap[symbol]) {
-        metrics[symbol] = metricsMap[symbol];
-      } else {
-        // Иначе заполняем нулевыми значениями
-        metrics[symbol] = {
-          openInterest: 0,
-          volume: 0, 
-          isNew: newCoins.includes(symbol),
-          hasLowOi: true,  // Считаем, что если нет данных, то OI низкий
-          hasLowVolume: true  // Считаем, что если нет данных, то объем низкий
-        };
-      }
-    });
-    
-    // Логируем статистику для отладки
-    const totalAssets = Object.keys(metrics).length;
-    const withOi = Object.values(metrics).filter(m => m.openInterest > 0).length;
-    const withVolume = Object.values(metrics).filter(m => m.volume > 0).length;
-    console.log(`Всего активов: ${totalAssets}, с OI > 0: ${withOi}, с Volume > 0: ${withVolume}`);
-    
-    res.json(metrics);
+      // Обрабатываем только бессрочные контракты (PERP)
+      marketsSummary.forEach(marketData => {
+        if (marketData.symbol && (marketData.symbol.endsWith('-PERP') || marketData.symbol.includes('-USD-PERP'))) {
+          // Извлекаем базовый символ
+          const baseSymbol = marketData.symbol.split('-')[0];
+          
+          // Вычисляем OI в USD
+          const openInterest = parseFloat(marketData.open_interest || 0);
+          const markPrice = parseFloat(marketData.mark_price || 0);
+          const openInterestUsd = openInterest * markPrice;
+          
+          // Объем в USD
+          const volume = parseFloat(marketData.volume_24h || 0);
+          
+          metricsMap[baseSymbol] = {
+            openInterest: openInterestUsd,
+            volume: volume,
+            isNew: newCoins.includes(baseSymbol),
+            hasLowOi: openInterestUsd <= LOW_OI_THRESHOLD,
+            hasLowVolume: volume <= LOW_VOLUME_THRESHOLD
+          };
+        }
+      });
+      
+      // Возвращаем данные клиенту
+      res.json(metricsMap);
+    }
   } catch (error) {
     console.error('Ошибка при получении метрик активов:', error);
     next(error);
   }
 });
-
 
 
 module.exports = router;

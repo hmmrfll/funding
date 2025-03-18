@@ -10,7 +10,7 @@ class BybitService {
 
   async getFundingRates(symbol, category = 'linear', limit = 200) {
     try {
-      console.log(`Запрос истории ставок фандинга с Bybit API для ${symbol}`);
+
       
       const response = await axios.get(`${this.baseUrl}/v5/market/funding/history`, {
         params: { category, symbol, limit }
@@ -87,7 +87,7 @@ class BybitService {
 
   async getLatestTickers(category = 'linear') {
     try {
-      console.log(`Запрос текущих тикеров с Bybit API (категория: ${category})`);
+
       
       const response = await axios.get(`${this.baseUrl}/v5/market/tickers`, {
         params: { category }

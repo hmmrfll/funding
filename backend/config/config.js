@@ -1,5 +1,6 @@
 // config/config.js
-require('dotenv').config(); // Для загрузки переменных окружения из .env файла
+require('dotenv').config(); 
+const topAssets = require('./assets');
 
 module.exports = {
   app: {
@@ -38,33 +39,10 @@ module.exports = {
       baseUrl: process.env.OKX_API_URL || 'https://www.okx.com',
     },
   },
+  topAssets,
   scheduler: {
     interval: process.env.SCHEDULER_INTERVAL || '*/5 * * * *', // Каждые 5 минут по умолчанию
   },
-  // Список основных активов для обработки
-  topAssets: [
-    // Основные крупные криптовалюты
-    'BTC', 'ETH', 'SOL', 'BNB', 'XRP', 
-    'AVAX', 'DOGE', 'ADA', 'LINK', 'DOT',
-    
-    // Другие популярные Layer 1 и Layer 2 блокчейны
-    'MATIC', 'OP', 'ARB', 'SUI', 'APT',
-    'NEAR', 'FTM', 'TRX', 'TON', 'STX',
-    'ATOM', 'ICP', 'HBAR', 'TIA', 'INJ',
-    
-    // DeFi и экосистемные токены
-    'UNI', 'AAVE', 'MKR', 'CRV', 'LDO',
-    'SNX', 'DYDX', 'SUSHI', 'FXS', 'PENDLE',
-    
-    // Мемкоины и другие популярные токены
-    'PEPE', 'SHIB', 'BONK', 'WIF', 'MEME',
-    'STRK', 'IMX', 'RUNE', 'FIL', 'LTC',
-    
-    // Новые и трендовые токены
-    'JUP', 'SEI', 'PYTH', 'TAO', 'MANTA',
-
-    'KAITO', 'IP', 'RED', 'RAY', 'OM', 'ELX'
-  ],
   // Настройки ограничения запросов к API
   rateLimit: {
     requests: parseInt(process.env.RATE_LIMIT_REQUESTS) || 20,  // количество запросов

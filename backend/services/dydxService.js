@@ -10,7 +10,7 @@ class DydxService {
 
   async getHistoricalFunding(ticker, limit = 200) {
     try {
-      console.log(`Запрос истории ставок фандинга с DYDX API для ${ticker}`);
+
       
       const response = await axios.get(`${this.baseUrl}/historicalFunding/${ticker}`, {
         params: { limit },

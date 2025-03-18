@@ -12,7 +12,7 @@ class HyperliquidService {
 
   async getAssetMeta() {
     try {
-      console.log(`Запрос к HyperLiquid API: ${this.baseUrl}`);
+
       const response = await axios.post(this.baseUrl, {
         type: "meta"
       });
@@ -31,7 +31,7 @@ class HyperliquidService {
 
   async getAssetContexts() {
     try {
-      console.log(`Запрос к HyperLiquid API: ${this.baseUrl}`);
+
       const response = await axios.post(this.baseUrl, {
         type: "metaAndAssetCtxs"
       });
@@ -53,7 +53,7 @@ class HyperliquidService {
 
   async getFundingHistory(coin, startTime, endTime = Date.now()) {
     try {
-      console.log(`Запрос истории фандинга для ${coin} с HyperLiquid API`);
+
       const response = await axios.post(this.baseUrl, {
         type: "fundingHistory",
         coin,
@@ -75,7 +75,7 @@ class HyperliquidService {
 
   async getPredictedFundings() {
     try {
-      console.log(`Запрос прогнозируемых ставок фандинга с HyperLiquid API`);
+
       const response = await axios.post(this.baseUrl, {
         type: "predictedFundings"
       });
@@ -219,7 +219,7 @@ class HyperliquidService {
               );
               savedCount++;
             } else {
-              console.log(`Пропускаем сохранение данных для ${assetSymbol}/${exchange} из-за отсутствия данных о ставке фандинга`);
+
             }
           }
         } catch (innerError) {

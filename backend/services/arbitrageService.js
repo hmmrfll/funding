@@ -1,182 +1,141 @@
 // services/arbitrageService.js
 const db = require('../config/db');
-// Удаляем импорты paradexService и hyperliquidService
-// Добавляем импорт assetService
 const assetService = require('./assetService');
 
 class ArbitrageService {
 
-  // services/arbitrageService.js - обновите метод calculateArbitrageOpportunities
   async calculateArbitrageOpportunities() {
     try {
-      console.log('Расчет арбитражных возможностей...');
       
-      // Получаем последние ставки фандинга со всех бирж
+      // Оптимизированный запрос для получения последних ставок
       const query = `
-      WITH paradex_latest AS (
+      WITH latest_rates AS (
+        -- Paradex последние ставки
         SELECT 
           asset_id, 
+          'Paradex' as exchange,
           funding_rate,
           ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY created_at DESC) as rn
         FROM paradex_funding_rates
-      ),
-      hyperliquid_latest AS (
+        WHERE created_at > extract(epoch from now() - interval '1 day') * 1000
+        UNION ALL
+        -- HyperLiquid последние ставки
         SELECT 
           asset_id, 
+          'HyperLiquid' as exchange,
           funding_rate,
           ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY created_at DESC) as rn
         FROM hyperliquid_funding_rates
-      ),
-      binance_latest AS (
+        WHERE created_at > extract(epoch from now() - interval '1 day') * 1000
+        UNION ALL
+        -- Binance последние ставки
         SELECT 
           asset_id, 
+          'Binance' as exchange,
           funding_rate,
           ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY created_at DESC) as rn
         FROM binance_funding_rates
-      ),
-      bybit_latest AS (
+        WHERE created_at > extract(epoch from now() - interval '1 day') * 1000
+        UNION ALL
+        -- Bybit последние ставки
         SELECT 
           asset_id, 
+          'Bybit' as exchange,
           funding_rate,
           ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY created_at DESC) as rn
         FROM bybit_funding_rates
-      ),
-      dydx_latest AS (
+        WHERE created_at > extract(epoch from now() - interval '1 day') * 1000
+        UNION ALL
+        -- OKX последние ставки
         SELECT 
           asset_id, 
-          funding_rate,
-          ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY effective_at DESC) as rn
-        FROM dydx_funding_rates
-      ),
-      okx_latest AS (
-        SELECT 
-          asset_id, 
+          'OKX' as exchange,
           funding_rate,
           ROW_NUMBER() OVER(PARTITION BY asset_id ORDER BY created_at DESC) as rn
         FROM okx_funding_rates
+        WHERE created_at > extract(epoch from now() - interval '1 day') * 1000
       )
       SELECT 
         a.id as asset_id,
         a.symbol,
-        p.funding_rate as paradex_rate,
-        h.funding_rate as hyperliquid_rate,
-        b.funding_rate as binance_rate,
-        bb.funding_rate as bybit_rate,
-        d.funding_rate as dydx_rate,
-        o.funding_rate as okx_rate
-      FROM assets a
-      LEFT JOIN paradex_latest p ON a.id = p.asset_id AND p.rn = 1
-      LEFT JOIN hyperliquid_latest h ON a.id = h.asset_id AND h.rn = 1
-      LEFT JOIN binance_latest b ON a.id = b.asset_id AND b.rn = 1
-      LEFT JOIN bybit_latest bb ON a.id = bb.asset_id AND bb.rn = 1
-      LEFT JOIN dydx_latest d ON a.id = d.asset_id AND d.rn = 1
-      LEFT JOIN okx_latest o ON a.id = o.asset_id AND o.rn = 1
-      WHERE a.is_active = TRUE
-      AND (
-        (p.funding_rate IS NOT NULL AND h.funding_rate IS NOT NULL) OR
-        (p.funding_rate IS NOT NULL AND b.funding_rate IS NOT NULL) OR
-        (h.funding_rate IS NOT NULL AND b.funding_rate IS NOT NULL) OR
-        (p.funding_rate IS NOT NULL AND bb.funding_rate IS NOT NULL) OR
-        (h.funding_rate IS NOT NULL AND bb.funding_rate IS NOT NULL) OR
-        (b.funding_rate IS NOT NULL AND bb.funding_rate IS NOT NULL) OR
-        (p.funding_rate IS NOT NULL AND d.funding_rate IS NOT NULL) OR
-        (h.funding_rate IS NOT NULL AND d.funding_rate IS NOT NULL) OR
-        (b.funding_rate IS NOT NULL AND d.funding_rate IS NOT NULL) OR
-        (bb.funding_rate IS NOT NULL AND d.funding_rate IS NOT NULL) OR
-        (d.funding_rate IS NOT NULL AND bb.funding_rate IS NOT NULL) OR
-        (p.funding_rate IS NOT NULL AND o.funding_rate IS NOT NULL) OR
-        (h.funding_rate IS NOT NULL AND o.funding_rate IS NOT NULL) OR
-        (b.funding_rate IS NOT NULL AND o.funding_rate IS NOT NULL) OR
-        (bb.funding_rate IS NOT NULL AND o.funding_rate IS NOT NULL) OR
-        (d.funding_rate IS NOT NULL AND o.funding_rate IS NOT NULL)
-      )
-    `;
+        lr.exchange,
+        lr.funding_rate
+      FROM latest_rates lr
+      JOIN assets a ON lr.asset_id = a.id
+      WHERE lr.rn = 1 AND a.is_active = TRUE
+      ORDER BY a.id, lr.exchange
+      `;
       
       const result = await db.query(query);
+
       
-      // Сохраняем арбитражные возможности между всеми биржами
+      // Группируем ставки по активам
+      const assetRates = new Map();
       for (const row of result.rows) {
-        // Существующие пары бирж - сохраняем как есть
-        // Paradex - HyperLiquid
-        if (row.paradex_rate !== null && row.hyperliquid_rate !== null) {
-          const diff = row.paradex_rate - row.hyperliquid_rate;
-          const strategy = diff > 0 
-            ? 'Long on HyperLiquid, Short on Paradex' 
-            : 'Long on Paradex, Short on HyperLiquid';
-          
-          await this.saveArbitrageOpportunity(
-            row.asset_id, 
-            'Paradex', 
-            'HyperLiquid', 
-            row.paradex_rate, 
-            row.hyperliquid_rate, 
-            diff, 
-            diff * 3 * 365, 
-            strategy
-          );
+        if (!assetRates.has(row.asset_id)) {
+          assetRates.set(row.asset_id, {
+            asset_id: row.asset_id,
+            symbol: row.symbol,
+            rates: new Map()
+          });
         }
         
-        // Paradex - Binance
-        if (row.paradex_rate !== null && row.binance_rate !== null) {
-          const diff = row.paradex_rate - row.binance_rate;
-          const strategy = diff > 0 
-            ? 'Long on Binance, Short on Paradex' 
-            : 'Long on Paradex, Short on Binance';
-          
-          await this.saveArbitrageOpportunity(
-            row.asset_id, 
-            'Paradex', 
-            'Binance', 
-            row.paradex_rate, 
-            row.binance_rate, 
-            diff, 
-            diff * 3 * 365, 
-            strategy
-          );
-        }
-        
-        
-        // Paradex - Bybit
-        if (row.paradex_rate !== null && row.bybit_rate !== null) {
-          const diff = row.paradex_rate - row.bybit_rate;
-          const strategy = diff > 0 
-            ? 'Long on Bybit, Short on Paradex' 
-            : 'Long on Paradex, Short on Bybit';
-          
-          await this.saveArbitrageOpportunity(
-            row.asset_id, 
-            'Paradex', 
-            'Bybit', 
-            row.paradex_rate, 
-            row.bybit_rate, 
-            diff, 
-            diff * 3 * 365, 
-            strategy
-          );
-        }
-        
-        if (row.paradex_rate !== null && row.okx_rate !== null) {
-          const diff = row.paradex_rate - row.okx_rate;
-          const strategy = diff > 0 
-            ? 'Long on OKX, Short on Paradex' 
-            : 'Long on Paradex, Short on OKX';
-          
-          await this.saveArbitrageOpportunity(
-            row.asset_id, 
-            'Paradex', 
-            'OKX', 
-            row.paradex_rate, 
-            row.okx_rate, 
-            diff, 
-            diff * 3 * 365, // Предполагаем фандинг каждые 8 часов, как у большинства бирж
-            strategy
-          );
-        }
-        
+        const asset = assetRates.get(row.asset_id);
+        asset.rates.set(row.exchange, row.funding_rate);
       }
       
-      console.log(`Найдено ${result.rows.length} активов для арбитража`);
-      return result.rows;
+      // Сохраняем арбитражные возможности
+      let opportunitiesCount = 0;
+      const exchangePairs = [
+        ['Paradex', 'HyperLiquid'],
+        ['Paradex', 'Binance'],
+        ['Paradex', 'Bybit'],
+        ['Paradex', 'OKX'],
+        ['HyperLiquid', 'Binance'],
+        ['HyperLiquid', 'Bybit'],
+        ['HyperLiquid', 'OKX'],
+        ['Binance', 'Bybit'],
+        ['Binance', 'OKX'],
+        ['Bybit', 'OKX']
+      ];
+      
+      // Очищаем устаревшие возможности перед вставкой новых
+      await db.query(`
+        DELETE FROM funding_arbitrage_opportunities 
+        WHERE created_at < NOW() - INTERVAL '6 hours'
+      `);
+      
+      // Для каждого актива, проверяем все пары бирж
+      for (const [, asset] of assetRates) {
+        for (const [exchange1, exchange2] of exchangePairs) {
+          if (asset.rates.has(exchange1) && asset.rates.has(exchange2)) {
+            const rate1 = asset.rates.get(exchange1);
+            const rate2 = asset.rates.get(exchange2);
+            const diff = rate1 - rate2;
+            const annualReturn = diff * 3 * 365; // Предполагаем 3 фандинга в день, 365 дней в году
+            
+            const strategy = diff > 0 
+              ? `Long on ${exchange2}, Short on ${exchange1}` 
+              : `Long on ${exchange1}, Short on ${exchange2}`;
+            
+            await this.saveArbitrageOpportunity(
+              asset.asset_id,
+              exchange1,
+              exchange2,
+              rate1,
+              rate2,
+              diff,
+              annualReturn,
+              strategy
+            );
+            
+            opportunitiesCount++;
+          }
+        }
+      }
+      
+
+      return opportunitiesCount;
     } catch (error) {
       console.error('Ошибка при расчете арбитражных возможностей:', error);
       throw error;
@@ -212,6 +171,7 @@ class ArbitrageService {
             exchange2,
             MAX(created_at) as max_created_at
           FROM funding_arbitrage_opportunities
+          WHERE created_at > NOW() - INTERVAL '6 hours'
           GROUP BY asset_id, exchange1, exchange2
         )
         SELECT 
@@ -241,8 +201,6 @@ class ArbitrageService {
       throw error;
     }
   }
-  
-  // Метод getAssetOrCreateBySymbol удален и перенесен в assetService.js
 }
 
 module.exports = new ArbitrageService();

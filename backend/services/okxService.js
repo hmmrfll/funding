@@ -11,7 +11,7 @@ class OkxService {
 
   async getFundingRates(instId = null) {
     try {
-      console.log(`Запрос ставок фандинга с OKX API ${instId ? `для ${instId}` : ''}`);
+
       
       const params = {};
       if (instId) params.instId = instId;

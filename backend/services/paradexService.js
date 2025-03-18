@@ -12,7 +12,7 @@ class ParadexService {
 
   async getMarkets() {
     try {
-      console.log(`Запрос к Paradex API: ${this.baseUrl}/markets`);
+
       const response = await axios.get(`${this.baseUrl}/markets`);
       
       if (!response.data || !response.data.results) {
@@ -29,7 +29,7 @@ class ParadexService {
 
   async getFundingData(market) {
     try {
-      console.log(`Запрос к Paradex API: ${this.baseUrl}/funding/data?market=${market}`);
+
       const response = await axios.get(`${this.baseUrl}/funding/data`, {
         params: { market }
       });
@@ -130,7 +130,7 @@ class ParadexService {
   // paradexService.js
   async saveMarketsData(marketsData) {
     try {
-      console.log(`Сохранение данных ${marketsData.length} рынков Paradex`);
+
       const result = await db.query(
         `INSERT INTO external_data (source, content) VALUES ($1, $2) RETURNING id`,
         ['paradex_markets', JSON.stringify(marketsData)]
@@ -145,7 +145,7 @@ class ParadexService {
   // В файле paradexService.js добавьте метод для получения данных рыночной статистики
 async getMarketsSummary() {
   try {
-    console.log(`Запрос к Paradex API: ${this.baseUrl}/markets/summary?market=ALL`);
+
     const response = await axios.get(`${this.baseUrl}/markets/summary`, {
       params: { market: 'ALL' }
     });

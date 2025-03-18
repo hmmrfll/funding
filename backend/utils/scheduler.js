@@ -1,13 +1,12 @@
 // utils/scheduler.js
 const cron = require('node-cron');
 const config = require('../config/config');
-const db = require('../config/db'); // Добавляем импорт db
+const db = require('../config/db');
 const arbitrageService = require('../services/arbitrageService');
 const paradexService = require('../services/paradexService');
 const hyperliquidService = require('../services/hyperliquidService');
 const binanceService = require('../services/binanceService');
 const bybitService = require('../services/bybitService');
-const dydxService = require('../services/dydxService');
 const okxService = require('../services/okxService');
 
 // Получаем список основных активов из конфигурации
@@ -16,21 +15,21 @@ const TOP_ASSETS = config.topAssets;
 // Функция обновления данных с Paradex
 async function updateParadexData() {
   try {
-    console.log('Обновление данных Paradex...');
+
     const markets = await paradexService.getMarkets();
-    console.log(`Получено ${markets.length} рынков с Paradex`);
+
    
     try {
       // Получаем и сохраняем данные о статистике рынков
       const marketsSummary = await paradexService.getMarketsSummary();
       if (marketsSummary && marketsSummary.length > 0) {
-        console.log(`Получено ${marketsSummary.length} записей о статистике рынков с Paradex`);
+
         
         await db.query(
           `INSERT INTO external_data (source, content) VALUES ($1, $2)`,
           ['paradex_markets_summary', JSON.stringify(marketsSummary)]
         );
-        console.log('Сохранены данные о статистике рынков Paradex');
+
       }
     } catch (summaryError) {
       console.error('Ошибка при получении или сохранении статистики рынков Paradex:', summaryError);
@@ -38,12 +37,11 @@ async function updateParadexData() {
     
     // Фильтруем рынки, оставляя только топовые активы
     const filteredMarkets = markets.filter(market => {
-      // Проверяем, что это рынок с бессрочными контрактами и он входит в список TOP_ASSETS
       return market.asset_kind === 'PERP' && 
              TOP_ASSETS.includes(market.base_currency);
     });
     
-    console.log(`Отфильтровано ${filteredMarkets.length} основных рынков`);
+
    
     // Сохраняем метаданные рынков и получаем список активов
     const assetsMap = new Map();
@@ -61,7 +59,7 @@ async function updateParadexData() {
     for (const [marketSymbol, { assetId }] of assetsMap.entries()) {
       try {
         const fundingData = await paradexService.getFundingData(marketSymbol);
-        console.log(`Получено ${fundingData.length} записей о фандинге для ${marketSymbol}`);
+
         
         const savedCount = await paradexService.saveFundingData(fundingData, assetId);
         totalSavedFunding += savedCount;
@@ -70,7 +68,7 @@ async function updateParadexData() {
       }
     }
    
-    console.log(`Всего сохранено ${totalSavedFunding} записей о фандинге с Paradex`);
+
     return totalSavedFunding;
  } catch (error) {
    console.error('Ошибка при обновлении данных Paradex:', error);
@@ -81,19 +79,19 @@ async function updateParadexData() {
 // Функция обновления данных с Bybit
 async function updateBybitData() {
   try {
-    console.log('Обновление данных Bybit...');
+
     let totalSaved = 0;
     
     // Get latest tickers which include funding rates
     const tickerData = await bybitService.getLatestTickers('linear');
     
     if (tickerData.length > 0) {
-      console.log(`Получено ${tickerData.length} тикеров с Bybit`);
+
       
       try {
         // Сохраняем сырые данные тикеров для использования в метриках
         await bybitService.saveTickersData(tickerData);
-        console.log('Сохранены сырые данные тикеров Bybit для метрик');
+
       } catch (saveError) {
         console.error('Ошибка при сохранении тикеров Bybit:', saveError);
       }
@@ -101,17 +99,17 @@ async function updateBybitData() {
       // Filter tickers for top assets
       const filteredTickers = tickerData.filter(ticker => {
         const baseSymbol = ticker.symbol.replace(/USDT$|USD$|BUSD$/, '');
-        return config.topAssets.includes(baseSymbol);
+        return TOP_ASSETS.includes(baseSymbol);
       });
       
-      console.log(`Отфильтровано ${filteredTickers.length} тикеров для основных активов`);
+
       
       // Save ticker data with funding rates
       const savedCount = await bybitService.saveFundingDataFromTickers(filteredTickers, 'linear');
       totalSaved += savedCount;
     }
     
-    console.log(`Всего сохранено ${totalSaved} записей о фандинге с Bybit`);
+
     return totalSaved;
   } catch (error) {
     console.error('Ошибка при обновлении данных Bybit:', error);
@@ -121,18 +119,18 @@ async function updateBybitData() {
 
 async function updateHyperliquidData() {
  try {
-   console.log('Обновление данных HyperLiquid...');
+
    
    // Получаем метаданные и контексты активов
    const { meta, contexts } = await hyperliquidService.getAssetContexts();
-   console.log(`Получено ${meta.length} активов и ${contexts.length} контекстов с HyperLiquid`);
+
    
    if (contexts && contexts.length > 0) {
-     console.log(`Получено ${contexts.length} контекстов активов с HyperLiquid`);
+
      
      try {
        await hyperliquidService.saveAssetContextsData(contexts);
-       console.log('Сохранены контексты активов HyperLiquid для метрик');
+
      } catch (saveError) {
        console.error('Ошибка при сохранении контекстов HyperLiquid:', saveError);
      }
@@ -149,15 +147,15 @@ async function updateHyperliquidData() {
      }
    }
    
-   console.log(`Отфильтровано ${filteredMeta.length} основных активов`);
+
    
    // Сохраняем метаданные активов
    const savedMetaCount = await hyperliquidService.saveAssetMetadata(filteredMeta);
-   console.log(`Сохранено ${savedMetaCount} метаданных активов с HyperLiquid`);
+
    
    // Сохраняем данные о фандинге
    const savedFundingCount = await hyperliquidService.saveFundingData(filteredMeta, filteredContexts);
-   console.log(`Сохранено ${savedFundingCount} записей о фандинге с HyperLiquid`);
+
    
    // Получаем и сохраняем прогнозируемые ставки фандинга
    const predictedFundings = await hyperliquidService.getPredictedFundings();
@@ -169,7 +167,7 @@ async function updateHyperliquidData() {
    
    if (filteredPredictedFundings.length > 0) {
      const savedPredictedCount = await hyperliquidService.savePredictedFundings(filteredPredictedFundings);
-     console.log(`Сохранено ${savedPredictedCount} прогнозируемых ставок фандинга`);
+
    }
    
    return savedFundingCount;
@@ -181,11 +179,11 @@ async function updateHyperliquidData() {
 
 async function updateBinanceData() {
   try {
-    console.log('Обновление данных Binance...');
+
     
     // Получаем информацию о настройках фандинга
     const fundingInfo = await binanceService.getFundingInfo();
-    console.log(`Получено ${fundingInfo.length} записей о настройках фандинга с Binance`);
+
     
     // Фильтруем активы по списку TOP_ASSETS
     const filteredFundingInfo = fundingInfo.filter(info => {
@@ -193,28 +191,38 @@ async function updateBinanceData() {
       return TOP_ASSETS.includes(baseSymbol);
     });
     
-    console.log(`Отфильтровано ${filteredFundingInfo.length} основных активов`);
+
     
     // Сохраняем метаданные
     const savedInfoCount = await binanceService.saveFundingInfo(filteredFundingInfo);
-    console.log(`Сохранено ${savedInfoCount} метаданных активов с Binance`);
+
     
     // Получаем последние ставки фандинга для каждого символа
     let totalSavedFunding = 0;
-    for (const info of filteredFundingInfo) {
+    
+    // Создаем массив промисов для параллельного выполнения запросов
+    const promises = filteredFundingInfo.map(async (info) => {
       try {
+        // Делаем паузу между запросами, чтобы не превышать ограничение API
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         const fundingRates = await binanceService.getFundingRates(info.symbol, 1);
         
         if (fundingRates.length > 0) {
-          const savedCount = await binanceService.saveFundingData(fundingRates);
-          totalSavedFunding += savedCount;
+          return await binanceService.saveFundingData(fundingRates);
         }
+        return 0;
       } catch (error) {
         console.error(`Ошибка при получении ставок фандинга для ${info.symbol}:`, error);
+        return 0;
       }
-    }
+    });
     
-    console.log(`Всего сохранено ${totalSavedFunding} записей о фандинге с Binance`);
+    // Ждем выполнения всех запросов и суммируем результаты
+    const results = await Promise.all(promises);
+    totalSavedFunding = results.reduce((sum, count) => sum + count, 0);
+    
+
     return totalSavedFunding;
   } catch (error) {
     console.error('Ошибка при обновлении данных Binance:', error);
@@ -224,7 +232,7 @@ async function updateBinanceData() {
 
 async function updateOkxData() {
   try {
-    console.log('Обновление данных OKX...');
+
     
     // Получаем список активов для запроса
     const instruments = TOP_ASSETS.map(asset => `${asset}-USDT-SWAP`);
@@ -241,8 +249,7 @@ async function updateOkxData() {
         const fundingData = await okxService.getFundingRates(instId);
         
         if (fundingData.length > 0) {
-          const savedCount = await okxService.saveFundingData(fundingData);
-          return savedCount;
+          return await okxService.saveFundingData(fundingData);
         }
         return 0;
       } catch (error) {
@@ -255,7 +262,7 @@ async function updateOkxData() {
     const results = await Promise.all(promises);
     totalSavedFunding = results.reduce((sum, count) => sum + count, 0);
     
-    console.log(`Всего сохранено ${totalSavedFunding} записей о фандинге с OKX`);
+
     return totalSavedFunding;
   } catch (error) {
     console.error('Ошибка при обновлении данных OKX:', error);
@@ -263,14 +270,13 @@ async function updateOkxData() {
   }
 }
 
-
 // Функция обновления данных всех бирж
 async function updateExchangeData() {
   try {
     console.log('Начало обновления данных бирж...');
     
     // Обновляем данные со всех бирж параллельно
-    const [paradexResult, hyperliquidResult, binanceResult, bybitResult] = await Promise.all([
+    const results = await Promise.all([
       updateParadexData(),
       updateHyperliquidData(),
       updateBinanceData(),
@@ -278,22 +284,23 @@ async function updateExchangeData() {
       updateOkxData(),
     ]);
     
-    // Рассчитываем арбитражные возможности
-    if ((paradexResult > 0 && hyperliquidResult > 0) || 
-        (paradexResult > 0 && binanceResult > 0) || 
-        (hyperliquidResult > 0 && binanceResult > 0) ||
-        (bybitResult > 0 && paradexResult > 0) ||
-        (bybitResult > 0 && hyperliquidResult > 0) ||
-        (bybitResult > 0 && binanceResult > 0) ||
-        (okxResult > 0 && paradexResult > 0) ||
-        (okxResult > 0 && hyperliquidResult > 0) ||
-        (okxResult > 0 && binanceResult > 0) ||
-        (okxResult > 0 && bybitResult > 0)) {
+    const [paradexResult, hyperliquidResult, binanceResult, bybitResult, okxResult] = results;
+    
+    // Рассчитываем арбитражные возможности, если хотя бы у двух бирж есть данные
+    const hasData = results.filter(result => result > 0).length >= 2;
+    
+    if (hasData) {
       const opportunities = await arbitrageService.calculateArbitrageOpportunities();
-      console.log(`Рассчитано ${opportunities.length} арбитражных возможностей`);
+
+    } else {
+      console.log('Недостаточно данных для расчета арбитражных возможностей');
     }
     
     console.log('Обновление данных бирж завершено успешно');
+    
+    // Очистка старых данных (старше 7 дней)
+    await cleanOldData();
+    
     return true;
   } catch (error) {
     console.error('Ошибка при обновлении данных бирж:', error);
@@ -301,40 +308,58 @@ async function updateExchangeData() {
   }
 }
 
-function init() {
-  // Проверяем валидность cron-выражения
-  if (!cron.validate(config.scheduler.interval)) {
-    console.error(`Неверный формат cron-выражения: ${config.scheduler.interval}`);
-    return;
+// Функция для очистки старых данных
+async function cleanOldData() {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const timestamp = sevenDaysAgo.getTime();
+    
+    // Удаляем данные старше 7 дней из всех таблиц с фандинг-ставками
+    const tables = [
+      'paradex_funding_rates', 
+      'hyperliquid_funding_rates', 
+      'binance_funding_rates', 
+      'bybit_funding_rates', 
+      'dydx_funding_rates',
+      'okx_funding_rates'
+    ];
+    
+    for (const table of tables) {
+      const result = await db.query(`DELETE FROM ${table} WHERE created_at < $1`, [timestamp]);
+      console.log(`Удалено ${result.rowCount} старых записей из таблицы ${table}`);
+    }
+    
+    // Удаляем старые арбитражные возможности
+    const arbResult = await db.query(
+      `DELETE FROM funding_arbitrage_opportunities WHERE created_at < NOW() - INTERVAL '7 days'`
+    );
+    console.log(`Удалено ${arbResult.rowCount} старых арбитражных возможностей`);
+    
+    // Удаляем старые данные из external_data
+    const externalResult = await db.query(
+      `DELETE FROM external_data WHERE created_at < NOW() - INTERVAL '7 days'`
+    );
+    console.log(`Удалено ${externalResult.rowCount} старых записей из external_data`);
+    
+    console.log('Очистка устаревших данных завершена');
+  } catch (error) {
+    console.error('Ошибка при очистке старых данных:', error);
   }
+}
+
+function init() {
+  // Настраиваем обновление каждые 30 минут
+  const cronExpression = '*/30 * * * *'; // Каждые 30 минут
   
-  console.log(`Планировщик настроен с интервалом: ${config.scheduler.interval}`);
+  console.log(`Планировщик настроен с интервалом: каждые 30 минут`);
   
   // Запускаем задачу по расписанию
-  cron.schedule(config.scheduler.interval, updateExchangeData);
+  cron.schedule(cronExpression, updateExchangeData);
   
   // Запускаем первичное обновление данных при старте приложения
   console.log('Запуск первичного обновления данных...');
-  
-  // Выполняем первичное получение статистики рынков Paradex
-  paradexService.getMarketsSummary()
-    .then(marketsSummary => {
-      if (marketsSummary && marketsSummary.length > 0) {
-        console.log(`Получено ${marketsSummary.length} записей о статистике рынков с Paradex`);
-        return db.query(
-          `INSERT INTO external_data (source, content) VALUES ($1, $2)`,
-          ['paradex_markets_summary', JSON.stringify(marketsSummary)]
-        );
-      }
-    })
-    .then(() => {
-      console.log('Сохранены данные о статистике рынков Paradex на старте');
-      updateExchangeData();
-    })
-    .catch(error => {
-      console.error('Ошибка при первичном получении статистики рынков Paradex:', error);
-      updateExchangeData();
-    });
+  updateExchangeData();
 }
 
 module.exports = {
