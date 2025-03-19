@@ -120,12 +120,13 @@ npm start
 
 Приложение собирает ставки финансирования с бирж:
 
-- ![Paradex](https://img.shields.io/badge/Paradex-000000.svg?logo=data:image/png;base64,...) Paradex
-- ![HyperLiquid](https://img.shields.io/badge/HyperLiquid-FF5733.svg?logo=data:image/png;base64,...) HyperLiquid
-- ![Binance](https://img.shields.io/badge/Binance-F0B90B.svg?logo=binance&logoColor=white) Binance
-- ![Bybit](https://img.shields.io/badge/Bybit-FFAA33.svg?logo=data:image/png;base64,...) Bybit
-- ![OKX](https://img.shields.io/badge/OKX-000000.svg?logo=okx&logoColor=white) OKX
-
+<p align="center">
+  <img src="https://img.shields.io/badge/Paradex-000000.svg?style=for-the-badge&logo=data:image/png;base64,..." alt="Paradex">
+  <img src="https://img.shields.io/badge/HyperLiquid-FF5733.svg?style=for-the-badge&logo=data:image/png;base64,..." alt="HyperLiquid">
+  <img src="https://img.shields.io/badge/Binance-F0B90B.svg?style=for-the-badge&logo=binance&logoColor=white" alt="Binance">
+  <img src="https://img.shields.io/badge/Bybit-FFAA33.svg?style=for-the-badge&logo=data:image/png;base64,..." alt="Bybit">
+  <img src="https://img.shields.io/badge/OKX-000000.svg?style=for-the-badge&logo=okx&logoColor=white" alt="OKX">
+</p>
 
 ## 📡 API
 
