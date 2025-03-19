@@ -5,9 +5,9 @@ import axios from 'axios';
 import FilterBar from '../components/FilterBar'; // Импортируем наш новый компонент
 import { FiRefreshCw } from 'react-icons/fi'; // Библиотека иконок
 
-// const API_URL = 'http://91.239.206.123:10902/api';
-// const API_URL = 'http://localhost:8034/api';
-const API_URL = 'https://api.hedgie.online/api';
+
+const API_URL = 'http://localhost:8034/api';
+
 
 // Предполагаемые списки монет для фильтров MAX XP (пример)
 // В реальной имплементации эти данные должны приходить с API

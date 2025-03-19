@@ -64,41 +64,46 @@ A real-time monitoring tool designed for cryptocurrency traders to identify and 
 
 <p>
     <a href="#"><img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-316192.svg?logo=postgresql&logoColor=white"></a>
+    <a href="#"><img alt="Docker" src="https://img.shields.io/badge/Docker-2496ED.svg?logo=docker&logoColor=white"></a>
     <a href="#"><img alt="GitHub Pages" src="https://img.shields.io/badge/GitHub%20Pages-327FC7.svg?logo=github&logoColor=white"></a>
 </p>
 
-### 🔧 Installation
+## 🚀 Getting Started
+
+### 🐳 Option 1: Docker (Recommended)
+
+The easiest way to get started is using Docker:
 
 ```bash
 git clone https://github.com/yourusername/funding-arbitrage.git
 cd funding-arbitrage
-npm install
+docker-compose up --build
+```
+
+Then open [http://localhost:5173](http://localhost:5173) in your browser.
+
+### 💻 Option 2: Manual Setup
+
+If you prefer to run the application manually, you can set up the backend and frontend separately:
+
+#### Backend Setup:
+```bash
+git clone https://github.com/yourusername/funding-arbitrage.git
+cd funding-arbitrage/backend
 cp .env.example .env
-```
-
-Edit the `.env` file with your database and API credentials.
-
-### 🛠️ Database Initialization
-
-```bash
+npm install
 npm run init-db
-```
-
-### ▶ Starting Development Server
-
-```bash
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
-
-### 🚀 Production Deployment
-
+#### Frontend Setup:
 ```bash
-npm run build
-npm run init-db
-npm start
+cd funding-arbitrage/frontend
+npm install
+npm run dev
 ```
+
+Then open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ## 🏗️ Architecture
 
