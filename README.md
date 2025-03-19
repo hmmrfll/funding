@@ -2,11 +2,11 @@
 
 Мощный инструмент мониторинга в реальном времени, разработанный для криптотрейдеров, чтобы выявлять и использовать возможности арбитража ставок финансирования на крупнейших криптовалютных биржах.
 
-![GitHub repo size](https://img.shields.io/github/repo-size/yourusername/funding-arbitrage)
-![GitHub stars](https://img.shields.io/github/stars/yourusername/funding-arbitrage?style=social)
-![GitHub forks](https://img.shields.io/github/forks/yourusername/funding-arbitrage?style=social)
-![GitHub issues](https://img.shields.io/github/issues/yourusername/funding-arbitrage)
-![GitHub license](https://img.shields.io/github/license/yourusername/funding-arbitrage)
+![GitHub repo size](https://img.shields.io/github/repo-size/hmmrfll/funding-arbitrage)
+![GitHub stars](https://img.shields.io/github/stars/hmmrfll/funding-arbitrage?style=social)
+![GitHub forks](https://img.shields.io/github/forks/hmmrfll/funding-arbitrage?style=social)
+![GitHub issues](https://img.shields.io/github/issues/hmmrfll/funding-arbitrage)
+![GitHub license](https://img.shields.io/github/license/hmmrfll/funding-arbitrage)
 
 ## 🚀 Обзор
 
