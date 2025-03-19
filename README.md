@@ -1,151 +1,164 @@
 # Funding Arbitrage Dashboard
 
-A powerful, real-time monitoring tool designed for cryptocurrency traders to identify and capitalize on funding rate arbitrage opportunities across major crypto exchanges.
+Мощный инструмент мониторинга в реальном времени, разработанный для криптотрейдеров, чтобы выявлять и использовать возможности арбитража ставок финансирования на крупнейших криптовалютных биржах.
 
-![Dashboard Preview](https://example.com/dashboard-preview.png)
 
-## Overview
 
-Funding Arbitrage Dashboard helps traders identify profitable funding rate differentials between Paradex and other major cryptocurrency exchanges. The platform calculates potential annual returns and suggests specific trading strategies, allowing users to make informed decisions for funding arbitrage opportunities.
+## 🚀 Обзор
 
-## Features
+**Funding Arbitrage Dashboard** помогает трейдерам находить прибыльные различия в ставках финансирования между **Paradex** и другими крупными криптовалютными биржами. Платформа рассчитывает потенциальную годовую доходность и предлагает стратегии торговли, позволяя пользователям принимать обоснованные решения.
 
-### Core Functionality
+## 🔥 Основные возможности
 
-- **Real-time Arbitrage Detection**: Continuously monitors funding rate differentials between Paradex and other exchanges (HyperLiquid, Bybit, Binance, OKX)
-- **Annualized Return Calculation**: Automatically calculates potential annual returns based on current funding rates
-- **Strategy Recommendations**: Generates actionable trading strategies (e.g., "Long on HyperLiquid, Short on Paradex")
-- **Multi-Exchange Support**: Compares funding rates across several major cryptocurrency exchanges
+### 📈 Основной функционал
 
-### Advanced Filtering & Analysis
+- **Обнаружение арбитража в реальном времени**: мониторинг ставок финансирования между Paradex и другими биржами (HyperLiquid, Bybit, Binance, OKX)
+- **Рекомендации по стратегии**: генерация торговых стратегий (например, "Лонг на HyperLiquid, Шорт на Paradex")
+- **Поддержка нескольких бирж**: сравнение ставок финансирования на различных криптовалютных платформах
 
-- **Comprehensive Exchange Filters**: Filter opportunities by specific exchange pairs
-- **Return Type Filtering**: Focus on positive-only, negative-only, or absolute value returns
-- **MAX XP Filters**: Special filtering options to identify high-potential opportunities:
- - **New Coins** 🆕: Recently listed assets with potential volatility
- - **Low Open Interest** 💰: Assets with low market participation
- - **Low Volume** 📊: Assets with reduced trading activity
-- **Advanced Sorting**: Sort by annual return, rate difference, or alphabetically
-- **Quick Symbol Search**: Instantly find specific assets
+### 🛠️ Расширенный анализ и фильтрация
 
-### Detailed Asset Information
+- **Фильтры бирж**: поиск возможностей по конкретным биржам
+- **Фильтрация доходности**: выбор положительной, отрицательной или абсолютной доходности
+- **Фильтры MAX XP**: специальные настройки для выявления потенциальных возможностей:
+  - **🆕 Новые монеты**: недавно добавленные активы с высокой волатильностью
+  - **💰 Низкий открытый интерес**: активы с небольшим числом открытых позиций
+  - **📊 Низкий объем**: активы с малой торговой активностью
+- **Расширенная сортировка**: по годовому доходу, разнице ставок или в алфавитном порядке
+- **Быстрый поиск**: мгновенный поиск конкретных активов
 
-- **Asset Pages**: Dedicated pages for each cryptocurrency with detailed funding information
-- **Exchange Comparison**: Side-by-side funding rate comparison between exchanges
-- **Historical Data**: View funding rate trends and historical arbitrage opportunities
-- **Market Details**: Access comprehensive asset metadata from different exchanges
+### 🔍 Детальная информация по активам
 
-### User Experience
+- **📜 Страницы активов**: детальная информация по каждому активу
+- **📊 Сравнение бирж**: ставки финансирования на различных биржах
+- **📈 Исторические данные**: анализ трендов ставок финансирования
+- **📉 Рыночные данные**: подробные метаданные активов с разных бирж
 
-- **Dark & Light Themes**: Choose between dark and light UI modes
-- **Responsive Design**: Optimized for both desktop and mobile devices
-- **Automatic Data Updates**: Fresh data every 5 minutes
-- **Session Persistence**: Remembers your filter settings between visits
+### 🎨 Пользовательский опыт
 
-## Getting Started
+- **🌙 Тёмная и ☀️ светлая темы**: выбор цветовой схемы
+- **📱 Адаптивный дизайн**: оптимизация для ПК и мобильных устройств
+- **🔄 Автоматическое обновление данных**: новые данные каждые 5 минут
+- **💾 Сохранение настроек**: фильтры и параметры сохраняются между сессиями
 
-### Prerequisites
+### 🛠️ Используемые технологии
+### 👨‍💻 Языки программирования
+<p>
+    <a href="#"><img alt="JavaScript" src="https://img.shields.io/badge/JavaScript-F7DF1E.svg?logo=javascript&logoColor=black"></a>
+    <a href="#"><img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-007ACC.svg?logo=typescript&logoColor=white"></a>
+    <a href="#"><img alt="Node.js" src="https://img.shields.io/badge/Node.js-43853D.svg?logo=node.js&logoColor=white"></a>
+    <a href="#"><img alt="SQL" src="https://custom-icon-badges.herokuapp.com/badge/SQL-025E8C.svg?logo=database&logoColor=white"></a>
+    <a href="#"><img alt="CSS" src="https://img.shields.io/badge/CSS-1572B6.svg?logo=css3&logoColor=white"></a>
+    <a href="#"><img alt="HTML" src="https://img.shields.io/badge/HTML-E34F26.svg?logo=html5&logoColor=white"></a>
+</p>
 
-- Node.js v14 or higher
-- PostgreSQL 12 or higher
-- API access to supported exchanges (optional for full functionality)
+### 🧰 Фреймворки и библиотеки
 
-### Installation
+<p>
+    <a href="#"><img alt="React" src="https://img.shields.io/badge/React-20232a.svg?logo=react&logoColor=%2361DAFB"></a>
+    <a href="#"><img alt="Express.js" src="https://img.shields.io/badge/Express.js-404d59.svg?logo=express&logoColor=white"></a>
+    <a href="#"><img alt="Chart.js" src="https://img.shields.io/badge/Chart.js-FF6384.svg?logo=chart.js&logoColor=white"></a>
+</p>
 
-1. Clone the repository:
-  ```bash
+### 🗄️ Базы данных и хостинг
+
+<p>
+    <a href="#"><img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-316192.svg?logo=postgresql&logoColor=white"></a>
+    <a href="#"><img alt="GitHub Pages" src="https://img.shields.io/badge/GitHub%20Pages-327FC7.svg?logo=github&logoColor=white"></a>
+</p>
+
+### 🔧 Установка
+
+```bash
 git clone https://github.com/yourusername/funding-arbitrage.git
 cd funding-arbitrage
-```
-```bash
-Install dependencies:
-bashCopynpm install
-```
-Set up environment variables:
-```bash
-bashCopycp .env.example .env
+npm install
+cp .env.example .env
 ```
 
-# Edit .env with your database and API credentials
+Отредактируйте `.env`, добавив данные для подключения к базе и API.
 
-Initialize the database:
+### 🛠️ Инициализация базы данных
+
 ```bash
-bashCopypsql -U postgres -f src/db/init.sql
+npm run init-db
 ```
 
-Start the development server:
+### ▶ Запуск сервера разработки
+
 ```bash
-bashCopynpm run dev
+npm run dev
 ```
 
-Visit http://localhost:5173 in your browser
+Откройте [http://localhost:5173](http://localhost:5173) в браузере.
 
-Production Deployment
-For production deployment, build the optimized assets:
+### 🚀 Развёртывание в продакшен
+
 ```bash
-bashCopynpm run build
+npm run build
+npm run init-db
 npm start
 ```
 
-# Architecture
-## Frontend
+## 🏗️ Архитектура
 
-React.js for UI components
-React Router for page navigation
-CSS variables for theming
-Responsive design with CSS Grid and Flexbox
+### 🎨 Фронтенд
 
-## Backend
+- React.js — для компонентов UI
+- React Router — для маршрутизации
+- CSS-переменные — для стилизации
+- Адаптивный дизайн — CSS Grid и Flexbox
 
-Node.js & Express server
-PostgreSQL database for data storage
-RESTful API endpoints
-Scheduled tasks for data updates
+### 🖥️ Бэкенд
 
-## Data Collection
-The application collects funding rate data from various exchanges:
+- Node.js + Express — серверная часть
+- PostgreSQL — база данных
+- REST API — взаимодействие с фронтендом
+- Запланированные задачи — обновление данных каждые 5 минут
 
-Paradex
-HyperLiquid
-Binance
-Bybit
-OKX
+### 📊 Сбор данных
 
-Data is updated every 5 minutes and processed to identify arbitrage opportunities.
+Приложение собирает ставки финансирования с бирж:
 
-## API Documentation
-The backend provides several API endpoints:
+- Paradex
+- HyperLiquid
+- Binance
+- Bybit
+- OKX
 
-GET /api/opportunities - Returns all current arbitrage opportunities
-GET /api/asset-metrics - Returns metrics for all assets (OI, volume, etc.)
-GET /api/all-rates/:symbol - Returns current funding rates for a specific asset
-GET /api/metadata/:symbol - Returns metadata for a specific asset
-POST /api/update - Triggers manual data update
+## 📡 API
 
-## Contributing
-Contributions are welcome! Please feel free to submit a Pull Request.
+- `GET /api/opportunities` — все текущие арбитражные возможности
+- `GET /api/asset-metrics` — метрики активов (открытый интерес, объём и т. д.)
+- `GET /api/all-rates/:symbol` — текущие ставки финансирования для указанного актива
+- `GET /api/metadata/:symbol` — метаданные актива
+- `POST /api/update` — ручное обновление данных
 
-Fork the repository
-Create your feature branch (git checkout -b feature/amazing-feature)
-Commit your changes (git commit -m 'Add some amazing feature')
-Push to the branch (git push origin feature/amazing-feature)
-Open a Pull Request
+## 🤝 Как внести вклад
 
-# License
-This project is licensed under the MIT License - see the LICENSE file for details.
-Disclaimer
-This software is for informational purposes only. It does not constitute financial advice, and users should conduct their own research before executing any trading strategies. Cryptocurrency trading involves significant risk.
-Acknowledgements
+Приветствуем вклад в проект!
 
-Paradex
-HyperLiquid
-Binance
-Bybit
-OKX
-React Icons
-Chart.js
+```bash
+git checkout -b feature/new-feature
+git commit -m 'Добавлен новый функционал'
+git push origin feature/new-feature
+```
 
-Contact
-Project Link: https://github.com/yourusername/funding-arbitrage
+## ⚠️ Отказ от ответственности
 
-Made with ❤️ for crypto traders by [Your Name]
+Данное ПО предназначено исключительно для информационных целей. Оно не является финансовым советом, и пользователи должны самостоятельно анализировать рынок перед совершением сделок.
+
+## 💙 Благодарности
+
+Проект вдохновлён и использует данные от:
+
+- Paradex
+- HyperLiquid
+- Binance
+- Bybit
+- OKX
+
+## 📞 Контакты
+
+📌 [Telegram](https://t.me/+OBU4Qyuv8QBhMzQ6)
+
