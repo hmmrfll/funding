@@ -123,7 +123,7 @@ npm start
 <p align="center">
   <img src="https://img.shields.io/badge/Paradex-000000.svg?style=for-the-badge&logo=data:image/png;base64,..." alt="Paradex">
   <img src="https://img.shields.io/badge/HyperLiquid-FF5733.svg?style=for-the-badge&logo=data:image/png;base64,..." alt="HyperLiquid">
-  <img src="https://img.shields.io/badge/Binance-F0B90B.svg?style=for-the-badge&logo=binance&logoColor=white" alt="Binance">
+  ![Binance](https://img.shields.io/badge/Binance-F0B90B.svg?style=flat-circle&logo=binance&logoColor=white)
   <img src="https://img.shields.io/badge/Bybit-FFAA33.svg?style=for-the-badge&logo=data:image/png;base64,..." alt="Bybit">
   <img src="https://img.shields.io/badge/OKX-000000.svg?style=for-the-badge&logo=okx&logoColor=white" alt="OKX">
 </p>
