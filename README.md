@@ -54,5 +54,98 @@ Funding Arbitrage Dashboard helps traders identify profitable funding rate diffe
 
 1. Clone the repository:
   ```bash
-  git clone https://github.com/yourusername/funding-arbitrage.git
-  cd funding-arbitrage
+git clone https://github.com/yourusername/funding-arbitrage.git
+cd funding-arbitrage
+```
+```bash
+Install dependencies:
+bashCopynpm install
+```
+Set up environment variables:
+```bash
+bashCopycp .env.example .env
+```
+
+# Edit .env with your database and API credentials
+
+Initialize the database:
+```bash
+bashCopypsql -U postgres -f src/db/init.sql
+```
+
+Start the development server:
+```bash
+bashCopynpm run dev
+```
+
+Visit http://localhost:5173 in your browser
+
+Production Deployment
+For production deployment, build the optimized assets:
+```bash
+bashCopynpm run build
+npm start
+```
+
+# Architecture
+## Frontend
+
+React.js for UI components
+React Router for page navigation
+CSS variables for theming
+Responsive design with CSS Grid and Flexbox
+
+## Backend
+
+Node.js & Express server
+PostgreSQL database for data storage
+RESTful API endpoints
+Scheduled tasks for data updates
+
+## Data Collection
+The application collects funding rate data from various exchanges:
+
+Paradex
+HyperLiquid
+Binance
+Bybit
+OKX
+
+Data is updated every 5 minutes and processed to identify arbitrage opportunities.
+
+## API Documentation
+The backend provides several API endpoints:
+
+GET /api/opportunities - Returns all current arbitrage opportunities
+GET /api/asset-metrics - Returns metrics for all assets (OI, volume, etc.)
+GET /api/all-rates/:symbol - Returns current funding rates for a specific asset
+GET /api/metadata/:symbol - Returns metadata for a specific asset
+POST /api/update - Triggers manual data update
+
+## Contributing
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+Fork the repository
+Create your feature branch (git checkout -b feature/amazing-feature)
+Commit your changes (git commit -m 'Add some amazing feature')
+Push to the branch (git push origin feature/amazing-feature)
+Open a Pull Request
+
+# License
+This project is licensed under the MIT License - see the LICENSE file for details.
+Disclaimer
+This software is for informational purposes only. It does not constitute financial advice, and users should conduct their own research before executing any trading strategies. Cryptocurrency trading involves significant risk.
+Acknowledgements
+
+Paradex
+HyperLiquid
+Binance
+Bybit
+OKX
+React Icons
+Chart.js
+
+Contact
+Project Link: https://github.com/yourusername/funding-arbitrage
+
+Made with ❤️ for crypto traders by [Your Name]
