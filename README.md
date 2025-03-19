@@ -1,48 +1,48 @@
 # Funding Arbitrage Dashboard
 
-Мощный инструмент мониторинга в реальном времени, разработанный для криптотрейдеров, чтобы выявлять и использовать возможности арбитража ставок финансирования на крупнейших криптовалютных биржах.
+A real-time monitoring tool designed for cryptocurrency traders to identify and capitalize on funding rate arbitrage opportunities across major crypto exchanges.
 
 
 
-## 🚀 Обзор
+## 🚀 Overview
 
-**Funding Arbitrage Dashboard** помогает трейдерам находить прибыльные различия в ставках финансирования между **Paradex** и другими крупными криптовалютными биржами. Платформа рассчитывает потенциальную годовую доходность и предлагает стратегии торговли, позволяя пользователям принимать обоснованные решения.
+**Funding Arbitrage Dashboard** helps traders find profitable funding rate differentials between **Paradex** and other major cryptocurrency exchanges. The platform calculates potential annual returns and suggests trading strategies, allowing users to make informed decisions.
 
-## 🔥 Основные возможности
+## 🔥 Key Features
 
-### 📈 Основной функционал
+### 📈 Core Functionality
 
-- **Обнаружение арбитража в реальном времени**: мониторинг ставок финансирования между Paradex и другими биржами (HyperLiquid, Bybit, Binance, OKX)
-- **Рекомендации по стратегии**: генерация торговых стратегий (например, "Лонг на HyperLiquid, Шорт на Paradex")
-- **Поддержка нескольких бирж**: сравнение ставок финансирования на различных криптовалютных платформах
+- **Real-time Arbitrage Detection**: Continuously monitors funding rate differentials between Paradex and other exchanges (HyperLiquid, Bybit, Binance, OKX)
+- **Strategy Recommendations**: Generates actionable trading strategies (e.g., "Long on HyperLiquid, Short on Paradex")
+- **Multi-Exchange Support**: Compares funding rates across several major cryptocurrency exchanges
 
-### 🛠️ Расширенный анализ и фильтрация
+### 🛠️ Advanced Analysis & Filtering
 
-- **Фильтры бирж**: поиск возможностей по конкретным биржам
-- **Фильтрация доходности**: выбор положительной, отрицательной или абсолютной доходности
-- **Фильтры MAX XP**: специальные настройки для выявления потенциальных возможностей:
-  - **🆕 Новые монеты**: недавно добавленные активы с высокой волатильностью
-  - **💰 Низкий открытый интерес**: активы с небольшим числом открытых позиций
-  - **📊 Низкий объем**: активы с малой торговой активностью
-- **Расширенная сортировка**: по годовому доходу, разнице ставок или в алфавитном порядке
-- **Быстрый поиск**: мгновенный поиск конкретных активов
+- **Exchange Filters**: Filter opportunities by specific exchange pairs
+- **Return Type Filtering**: Focus on positive-only, negative-only, or absolute value returns
+- **MAX XP Filters**: Special filtering options to identify high-potential opportunities:
+  - **🆕 New Coins**: Recently listed assets with potential volatility
+  - **💰 Low Open Interest**: Assets with low market participation
+  - **📊 Low Volume**: Assets with reduced trading activity
+- **Advanced Sorting**: Sort by annual return, rate difference, or alphabetically
+- **Quick Symbol Search**: Instantly find specific assets
 
-### 🔍 Детальная информация по активам
+### 🔍 Detailed Asset Information
 
-- **📜 Страницы активов**: детальная информация по каждому активу
-- **📊 Сравнение бирж**: ставки финансирования на различных биржах
-- **📈 Исторические данные**: анализ трендов ставок финансирования
-- **📉 Рыночные данные**: подробные метаданные активов с разных бирж
+- **📜 Asset Pages**: Dedicated pages for each cryptocurrency with detailed funding information
+- **📊 Exchange Comparison**: Side-by-side funding rate comparison between exchanges
+- **📈 Historical Data**: View funding rate trends and historical arbitrage opportunities
+- **📉 Market Details**: Access comprehensive asset metadata from different exchanges
 
-### 🎨 Пользовательский опыт
+### 🎨 User Experience
 
-- **🌙 Тёмная и ☀️ светлая темы**: выбор цветовой схемы
-- **📱 Адаптивный дизайн**: оптимизация для ПК и мобильных устройств
-- **🔄 Автоматическое обновление данных**: новые данные каждые 5 минут
-- **💾 Сохранение настроек**: фильтры и параметры сохраняются между сессиями
+- **🌙 Dark & ☀️ Light Themes**: Choose between dark and light UI modes
+- **📱 Responsive Design**: Optimized for both desktop and mobile devices
+- **🔄 Automatic Data Updates**: Fresh data every 5 minutes
+- **💾 Session Persistence**: Remembers your filter settings between visits
 
-### 🛠️ Используемые технологии
-### 👨‍💻 Языки программирования
+### 🛠️ Technologies Used
+### 👨‍💻 Programming Languages
 <p>
     <a href="#"><img alt="JavaScript" src="https://img.shields.io/badge/JavaScript-F7DF1E.svg?logo=javascript&logoColor=black"></a>
     <a href="#"><img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-007ACC.svg?logo=typescript&logoColor=white"></a>
@@ -52,7 +52,7 @@
     <a href="#"><img alt="HTML" src="https://img.shields.io/badge/HTML-E34F26.svg?logo=html5&logoColor=white"></a>
 </p>
 
-### 🧰 Фреймворки и библиотеки
+### 🧰 Frameworks & Libraries
 
 <p>
     <a href="#"><img alt="React" src="https://img.shields.io/badge/React-20232a.svg?logo=react&logoColor=%2361DAFB"></a>
@@ -60,14 +60,14 @@
     <a href="#"><img alt="Chart.js" src="https://img.shields.io/badge/Chart.js-FF6384.svg?logo=chart.js&logoColor=white"></a>
 </p>
 
-### 🗄️ Базы данных и хостинг
+### 🗄️ Databases & Hosting
 
 <p>
     <a href="#"><img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-316192.svg?logo=postgresql&logoColor=white"></a>
     <a href="#"><img alt="GitHub Pages" src="https://img.shields.io/badge/GitHub%20Pages-327FC7.svg?logo=github&logoColor=white"></a>
 </p>
 
-### 🔧 Установка
+### 🔧 Installation
 
 ```bash
 git clone https://github.com/yourusername/funding-arbitrage.git
@@ -76,23 +76,23 @@ npm install
 cp .env.example .env
 ```
 
-Отредактируйте `.env`, добавив данные для подключения к базе и API.
+Edit the `.env` file with your database and API credentials.
 
-### 🛠️ Инициализация базы данных
+### 🛠️ Database Initialization
 
 ```bash
 npm run init-db
 ```
 
-### ▶ Запуск сервера разработки
+### ▶ Starting Development Server
 
 ```bash
 npm run dev
 ```
 
-Откройте [http://localhost:5173](http://localhost:5173) в браузере.
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-### 🚀 Развёртывание в продакшен
+### 🚀 Production Deployment
 
 ```bash
 npm run build
@@ -100,25 +100,25 @@ npm run init-db
 npm start
 ```
 
-## 🏗️ Архитектура
+## 🏗️ Architecture
 
-### 🎨 Фронтенд
+### 🎨 Frontend
 
-- React.js — для компонентов UI
-- React Router — для маршрутизации
-- CSS-переменные — для стилизации
-- Адаптивный дизайн — CSS Grid и Flexbox
+- React.js — for UI components
+- React Router — for page navigation
+- CSS variables — for theming
+- Responsive design — CSS Grid and Flexbox
 
-### 🖥️ Бэкенд
+### 🖥️ Backend
 
-- Node.js + Express — серверная часть
-- PostgreSQL — база данных
-- REST API — взаимодействие с фронтендом
-- Запланированные задачи — обновление данных каждые 5 минут
+- Node.js + Express — server-side
+- PostgreSQL — database
+- REST API — frontend communication
+- Scheduled tasks — data updates every 5 minutes
 
-### 📊 Сбор данных
+### 📊 Data Collection
 
-Приложение собирает ставки финансирования с бирж:
+The application collects funding rate data from exchanges:
 
 <p align="center">
   <img src="https://img.shields.io/badge/Paradex-000000.svg?style=for-the-badge&logo=data:image/png;base64,..." alt="Paradex">
@@ -130,29 +130,29 @@ npm start
 
 ## 📡 API
 
-- `GET /api/opportunities` — все текущие арбитражные возможности
-- `GET /api/asset-metrics` — метрики активов (открытый интерес, объём и т. д.)
-- `GET /api/all-rates/:symbol` — текущие ставки финансирования для указанного актива
-- `GET /api/metadata/:symbol` — метаданные актива
-- `POST /api/update` — ручное обновление данных
+- `GET /api/opportunities` — all current arbitrage opportunities
+- `GET /api/asset-metrics` — asset metrics (OI, volume, etc.)
+- `GET /api/all-rates/:symbol` — current funding rates for a specific asset
+- `GET /api/metadata/:symbol` — metadata for a specific asset
+- `POST /api/update` — trigger manual data update
 
-## 🤝 Как внести вклад
+## 🤝 Contributing
 
-Приветствуем вклад в проект!
+Contributions are welcome!
 
 ```bash
 git checkout -b feature/new-feature
-git commit -m 'Добавлен новый функционал'
+git commit -m 'Add new feature'
 git push origin feature/new-feature
 ```
 
-## ⚠️ Отказ от ответственности
+## ⚠️ Disclaimer
 
-Данное ПО предназначено исключительно для информационных целей. Оно не является финансовым советом, и пользователи должны самостоятельно анализировать рынок перед совершением сделок.
+This software is for informational purposes only. It does not constitute financial advice, and users should conduct their own research before executing any trading strategies.
 
-## 💙 Благодарности
+## 💙 Acknowledgements
 
-Проект вдохновлён и использует данные от:
+This project is inspired by and uses data from:
 
 - Paradex
 - HyperLiquid
@@ -160,6 +160,6 @@ git push origin feature/new-feature
 - Bybit
 - OKX
 
-## 📞 Контакты
+## 📞 Contact
 
 📌 [Telegram](https://t.me/+OBU4Qyuv8QBhMzQ6)
