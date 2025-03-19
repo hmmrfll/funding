@@ -162,8 +162,4 @@ git push origin feature/new-feature
 
 ## 📞 Контакты
 
-<a href="https://linkedin.com/in/hmmrfll/" target="_blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/linked-in-alt.svg" alt="hmmrfll" height="30" width="40" /></a>
-&nbsp;
-<a href="https://twitter.com/hmmrfllX" target="_blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/twitter.svg" alt="hmmrfllX" height="30" width="40" /></a>
-&nbsp;
-<a href="https://t.me/+OBU4Qyuv8QBhMzQ6" target="_blank"><img align="center" src="https://img.icons8.com/?size=100&id=63306&format=png&color=000000" alt="hmmrfll" height="30" width="40" /></a>
+📌 [Telegram](https://t.me/+OBU4Qyuv8QBhMzQ6)
