@@ -167,9 +167,12 @@ $RECYCLE.BIN/
 *.orig
 
 # Игнорировать все файлы в папке src/uploads/avatars
-/src/uploads/avatars/*
+/frontend/src/uploads/avatars/*
 
 # Игнорировать все файлы в папке src/uploads/clubsImages
-/src/uploads/clubsImages/*
+/frontend/src/uploads/clubsImages/*
+
+/frontend/.env
+/backend/.env
 
 
