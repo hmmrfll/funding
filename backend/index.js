@@ -7,6 +7,7 @@ const db = require('./config/db');
 const apiRoutes = require('./routes/api');
 const errorHandler = require('./middleware/errorHandler');
 const scheduler = require('./utils/scheduler');
+const telegramBot = require('./bot/telegramBot'); // Импортируем бота
 
 // Инициализация приложения
 const app = express();
@@ -16,7 +17,8 @@ app.use(cors({
   origin: '*',  // или конкретные домены
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
-}));app.use(express.json());
+}));
+app.use(express.json());
 app.use(morgan('dev')); // Логирование HTTP запросов
 
 // Маршруты
@@ -27,6 +29,19 @@ app.use(errorHandler);
 
 // Запуск планировщика задач
 scheduler.init();
+
+// Запуск Telegram бота с вебхуком
+if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_WEBHOOK_URL) {
+  const bot = telegramBot.startBot();
+  
+  if (bot) {
+    console.log('Telegram бот запущен в режиме вебхука');
+  } else {
+    console.warn('Не удалось запустить Telegram бота');
+  }
+} else {
+  console.warn('TELEGRAM_BOT_TOKEN или TELEGRAM_WEBHOOK_URL не установлены. Telegram бот не запущен.');
+}
 
 // Запуск сервера
 const PORT = config.app.port;
@@ -44,6 +59,19 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (err) => {
   console.error('Необработанный rejection:', err);
   process.exit(1);
+});
+
+// Обработка завершения работы
+process.on('SIGINT', () => {
+  console.log('Получен сигнал SIGINT, завершаем работу...');
+  telegramBot.stopBot();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('Получен сигнал SIGTERM, завершаем работу...');
+  telegramBot.stopBot();
+  process.exit(0);
 });
 
 // Экспортируем приложение для тестирования

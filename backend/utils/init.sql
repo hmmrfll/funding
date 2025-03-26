@@ -230,3 +230,30 @@ CREATE TABLE IF NOT EXISTS okx_asset_metadata (
     updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE (asset_id, inst_id)
 );
+
+-- Создание таблицы для пользователей
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    telegram_id BIGINT UNIQUE,
+    username VARCHAR(100),
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    telegram_photo TEXT,
+    auth_date TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    role VARCHAR(20) DEFAULT 'user', -- 'user', 'admin', 'supervisor'
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Создание таблицы для API ключей
+CREATE TABLE IF NOT EXISTS user_api_keys (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    exchange VARCHAR(50) NOT NULL,
+    api_key TEXT NOT NULL,
+    api_secret TEXT NOT NULL,
+    passphrase TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, exchange)
+);
