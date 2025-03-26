@@ -6,7 +6,7 @@ import FilterBar from '../components/FilterBar'; // Импортируем на�
 import { FiRefreshCw } from 'react-icons/fi'; // Библиотека иконок
 
 
-const API_URL = 'http://localhost:8034/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
 
 // Предполагаемые списки монет для фильтров MAX XP (пример)

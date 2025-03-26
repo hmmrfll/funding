@@ -1,11 +1,15 @@
 // src/components/Header.jsx
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 const Header = () => {
   // Состояние для отслеживания текущей темы
   const [isDarkTheme, setIsDarkTheme] = useState(true);
-  
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userData, setUserData] = useState(null);
+  const botUsername = process.env.VITE_APP_BOT_USERNAME;
+  const location = useLocation();
+
   // При монтировании компонента проверяем сохраненную тему или системные настройки
   useEffect(() => {
     // Проверяем сохраненную тему в localStorage
@@ -21,7 +25,51 @@ const Header = () => {
       setIsDarkTheme(prefersDark);
       document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
     }
+    
+    // Проверяем сохраненные данные пользователя
+    const savedUserData = localStorage.getItem('userData');
+    if (savedUserData) {
+      setUserData(JSON.parse(savedUserData));
+      setIsLoggedIn(true);
+    }
   }, []);
+  
+  // Проверяем параметры URL при монтировании или изменении URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    const userId = params.get('user_id');
+    
+    if (token && userId) {
+      // Сохраняем данные пользователя
+      const user = { token, userId };
+      localStorage.setItem('userData', JSON.stringify(user));
+      setUserData(user);
+      setIsLoggedIn(true);
+      
+      // Очищаем URL от параметров (опционально)
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [location]);
+
+  const handleTelegramLogin = () => {
+    // Создаем параметр авторизации с timestamp
+    const timestamp = Math.floor(Date.now() / 1000);
+    const authParam = `auth_${timestamp}`;
+    
+    // Формируем URL для перехода в Telegram бот
+    const telegramUrl = `https://t.me/${botUsername}?start=${authParam}`;
+    
+    // Перенаправляем пользователя
+    window.location.href = telegramUrl;
+  };
+  
+  const handleLogout = () => {
+    // Удаляем данные пользователя
+    localStorage.removeItem('userData');
+    setUserData(null);
+    setIsLoggedIn(false);
+  };
   
   // Функция для переключения темы
   const toggleTheme = () => {
@@ -124,7 +172,7 @@ const Header = () => {
             GitHub
           </a>
           
-          {/* Переключатель темы вместо кнопки Connect Wallet */}
+          {/* Переключатель темы */}
           <button 
             onClick={toggleTheme}
             className="theme-toggle-btn"
@@ -169,10 +217,68 @@ const Header = () => {
               </>
             )}
           </button>
-        </nav>
-      </div>
-    </header>
-  );
+
+          {/* Кнопка Telegram авторизации или выхода в зависимости от статуса входа */}
+          {isLoggedIn ? (
+            <button
+              onClick={handleLogout}
+              style={{
+                backgroundColor: '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: '20px',
+                padding: '10px 15px',
+                fontSize: '14px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                transition: 'background-color 0.3s ease'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#d32f2f'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f44336'}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+               <path d="M16 17L21 12L16 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+               <path d="M21 12H9" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+             </svg>
+             Выйти
+           </button>
+         ) : (
+           <button
+             onClick={handleTelegramLogin}
+             style={{
+               backgroundColor: '#0088cc',
+               color: 'white',
+               border: 'none',
+               borderRadius: '20px',
+               padding: '10px 15px',
+               fontSize: '14px',
+               fontWeight: '500',
+               display: 'flex',
+               alignItems: 'center',
+               gap: '8px',
+               cursor: 'pointer',
+               transition: 'background-color 0.3s ease'
+             }}
+             onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#0077b5'}
+             onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#0088cc'}
+           >
+             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+               <path
+                 d="M12 0C5.37 0 0 5.37 0 12C0 18.63 5.37 24 12 24C18.63 24 24 18.63 24 12C24 5.37 18.63 0 12 0ZM17.89 8.17L15.94 17.11C15.84 17.61 15.55 17.73 15.13 17.5L12.03 15.25L10.53 16.69C10.42 16.8 10.33 16.89 10.13 16.89L10.27 13.73L15.61 8.9C15.78 8.75 15.58 8.67 15.36 8.82L8.81 12.93L5.76 11.97C5.27 11.82 5.26 11.49 5.86 11.24L17.07 7.08C17.49 6.93 17.86 7.17 17.89 7.63V8.17Z"
+                 fill="white"
+               />
+             </svg>
+             Войти через Telegram
+           </button>
+         )}
+       </nav>
+     </div>
+   </header>
+ );
 };
 
 export default Header;

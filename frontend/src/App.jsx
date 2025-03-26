@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
 import AssetPage from './pages/AssetPage';
@@ -17,6 +17,20 @@ function App() {
       const theme = prefersDark ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', theme);
       localStorage.setItem('theme', theme);
+    }
+
+    // Проверяем URL на наличие параметров авторизации
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const userId = params.get('user_id');
+    
+    if (token && userId) {
+      // Сохраняем данные в сессию
+      sessionStorage.setItem('token', token);
+      sessionStorage.setItem('user_id', userId);
+      
+      // Очищаем URL от параметров
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
 
