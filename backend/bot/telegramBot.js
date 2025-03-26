@@ -108,5 +108,6 @@ function stopBot() {
 module.exports = {
   startBot,
   stopBot,
-  verifyToken
+  verifyToken,
+  bot
 };

@@ -24,24 +24,43 @@ app.use(morgan('dev')); // Логирование HTTP запросов
 // Маршруты
 app.use('/api', apiRoutes);
 
-// Обработчик ошибок
-app.use(errorHandler);
-
 // Запуск планировщика задач
 scheduler.init();
 
-// Запуск Telegram бота с вебхуком
-if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_WEBHOOK_URL) {
-  const bot = telegramBot.startBot();
-  
-  if (bot) {
-    console.log('Telegram бот запущен в режиме вебхука');
+// Запуск Telegram бота
+let bot;
+if (process.env.TELEGRAM_BOT_TOKEN) {
+  // Выбираем режим работы бота: вебхук или long polling
+  if (process.env.TELEGRAM_WEBHOOK_URL) {
+    // Режим вебхука
+    bot = telegramBot.startBot();
+    
+    if (bot) {
+      // Сохраняем бот в глобальную переменную для доступа в обработчике маршрута
+      app.locals.telegramBot = bot;
+      console.log('Telegram бот запущен в режиме вебхука');
+      
+      // Обработчик вебхуков Telegram
+      app.post(`/bot${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
+        bot.processUpdate(req.body);
+        res.sendStatus(200);
+      });
+    } else {
+      console.warn('Не удалось запустить Telegram бота в режиме вебхука');
+    }
   } else {
-    console.warn('Не удалось запустить Telegram бота');
+    // Режим long polling
+    const botOptions = { polling: true };
+    bot = new telegramBot.TelegramBot(process.env.TELEGRAM_BOT_TOKEN, botOptions);
+    telegramBot.setupBot(bot); // устанавливаем обработчики для бота
+    console.log('Telegram бот запущен в режиме long polling');
   }
 } else {
-  console.warn('TELEGRAM_BOT_TOKEN или TELEGRAM_WEBHOOK_URL не установлены. Telegram бот не запущен.');
+  console.warn('TELEGRAM_BOT_TOKEN не установлен. Telegram бот не запущен.');
 }
+
+// Обработчик ошибок
+app.use(errorHandler);
 
 // Запуск сервера
 const PORT = config.app.port;
