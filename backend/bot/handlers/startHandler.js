@@ -2,6 +2,7 @@
 const axios = require('axios');
 const db = require('../../config/db');
 const { encryptData } = require('../../hooks/useEncryption');
+const { getMainMenuMarkup } = require('./apiKeys/ui');
 
 /**
  * Обработчик команды /start
@@ -102,25 +103,16 @@ module.exports = function createStartHandler(bot, authCodes, cleanExpiredTokens)
       } else {
         // Стандартное приветствие с кнопками для посещения сайта и управления API ключами
         const siteUrl = process.env.FRONTEND_URL || 'https://paradex.hedgie.org';
-        
+
         const opts = {
-          reply_markup: {
-            inline_keyboard: [
-              [
-                { text: '🌐 Перейти на сайт', url: siteUrl },
-              ],
-              [
-                { text: '🔑 API keys', callback_data: 'api_keys_menu' }
-              ]
-            ]
-          }
+          reply_markup: getMainMenuMarkup(siteUrl)
         };
         
         await bot.sendMessage(
           userId,
-          `Привет, ${firstName}! Я бот для авторизации в системе фандинг-арбитража.\n\n` +
+          `Привет, ${firstName}! Я бот для арбитража фандинга и управления позициями.\n\n` +
           `🔍 Чтобы войти в систему, перейдите на сайт и нажмите кнопку "Войти через Telegram".\n\n` +
-          `🔑 Для управления API ключами используйте соответствующую кнопку.`,
+          `🔑 Используйте меню ниже для управления API ключами и торговыми операциями.`,
           opts
         );
       }

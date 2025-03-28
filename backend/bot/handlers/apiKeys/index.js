@@ -32,21 +32,22 @@ module.exports = function createApiKeysHandler(bot) {
           );
           break;
           
-        case 'api_keys_back_to_main':
-          // Возвращаемся к основному меню
-          const siteUrl = process.env.FRONTEND_URL || 'https://paradex.hedgie.org';
-          
-          await bot.editMessageText(
-            `Привет, ${query.from.first_name}! Я бот для авторизации в системе фандинг-арбитража.\n\n` +
-            `🔍 Чтобы войти в систему, перейдите на сайт и нажмите кнопку "Войти через Telegram".\n\n` +
-            `🔑 Для управления API ключами используйте соответствующую кнопку.`,
-            {
-              chat_id: userId,
-              message_id: messageId,
-              reply_markup: getMainMenuMarkup(siteUrl)
-            }
-          );
-          break;
+        // В обработчике callback_query для 'api_keys_back_to_main'
+          case 'api_keys_back_to_main':
+            // Возвращаемся к основному меню
+            const siteUrl = process.env.FRONTEND_URL || 'https://paradex.hedgie.org';
+            
+            await bot.editMessageText(
+              `Привет, ${query.from.first_name}! Я бот для арбитража фандинга и управления позициями.\n\n` +
+              `🔍 Чтобы войти в систему, перейдите на сайт и нажмите кнопку "Войти через Telegram".\n\n` +
+              `🔑 Используйте меню для управления API ключами и торговыми операциями.`,
+              {
+                chat_id: userId,
+                message_id: messageId,
+                reply_markup: getMainMenuMarkup(siteUrl)
+              }
+            );
+            break;
           
         case 'api_keys_paradex':
           await handleExchangeKeys(bot, userId, messageId, 'Paradex', query.from.first_name);
