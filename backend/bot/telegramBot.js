@@ -5,14 +5,15 @@ const config = require('../config/config');
 const db = require('../config/db');
 const express = require('express');
 const createStartHandler = require('./handlers/startHandler');
+const createApiKeysHandler = require('./handlers/apiKeys/index');
 
 // Временное хранилище токенов авторизации
 const authCodes = new Map();
+const userStates = new Map();
 
 // Создаем экземпляр бота
 let bot;
 let webhookServer;
-
 /**
  * Инициализация бота в режиме вебхука
  */
@@ -54,19 +55,25 @@ function startBot() {
   }
 }
 
-/**
- * Настройка обработчиков команд бота
- */
 function setupEventHandlers() {
   // Подключаем обработчик команды /start из отдельного модуля
   const startHandler = createStartHandler(bot, authCodes, cleanExpiredTokens);
   bot.onText(/\/start(?:\s+(.+))?/, startHandler);
   
-  // Обработчик всех сообщений
-  bot.on('message', (msg) => {
-    if (msg.text && !msg.text.startsWith('/')) {
-      bot.sendMessage(msg.from.id, 'Я понимаю только команды. Для списка доступных команд, отправьте /help');
-    }
+  // Подключаем обработчик API ключей
+  const apiKeysHandler = createApiKeysHandler(bot);
+  
+  // Добавляем хелп-команду
+  bot.onText(/\/help/, (msg) => {
+    const userId = msg.from.id;
+    bot.sendMessage(
+      userId,
+      `🤖 *Доступные команды:*\n\n` +
+      `/start - Главное меню\n` +
+      `/help - Справка по командам\n\n` +
+      `Используйте кнопки в меню для управления API ключами.`,
+      { parse_mode: 'Markdown' }
+    );
   });
 }
 
