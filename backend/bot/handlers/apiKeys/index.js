@@ -4,6 +4,7 @@ const { getExchangesMenuMarkup, getMainMenuMarkup } = require('./ui');
 const { 
   handleExchangeKeys, 
   startKeyAddition, 
+  startParadexKeyAddition,
   confirmKeyDeletion, 
   deleteApiKey,
   finalizeKeyAddition 
@@ -72,7 +73,7 @@ module.exports = function createApiKeysHandler(bot) {
           break;
           
         case 'api_keys_add_paradex':
-          await startKeyAddition(bot, userId, messageId, 'Paradex');
+          await startParadexKeyAddition(bot, userId, messageId);
           break;
           
         case 'api_keys_add_hyperliquid':
@@ -136,39 +137,37 @@ module.exports = function createApiKeysHandler(bot) {
         console.warn('Не удалось удалить сообщение:', deleteError);
       }
       
-      switch (userState.state) {
-        case 'waiting_api_key':
-          // Получили API ключ, запрашиваем секрет
-          userState.apiKey = msg.text;
-          userState.state = 'waiting_api_secret';
-          
-          await bot.editMessageText(
-            `🔑 *Добавление API ключа для ${userState.exchange}*\n\n` +
-            `API ключ получен. Теперь отправьте API Secret.`,
-            {
-              chat_id: userId,
-              message_id: userState.messageId,
-              parse_mode: 'Markdown',
-              reply_markup: {
-                inline_keyboard: [
-                  [{ text: '❌ Отмена', callback_data: 'api_keys_cancel_add' }]
-                ]
-              }
-            }
+      // Проверяем состояние диалога
+      if (userState.state === 'waiting_paradex_jwt') {
+        // Получили JWT токен для Paradex
+        const jwtToken = msg.text.trim();
+        
+        // Проверка формата JWT
+        if (!jwtToken.startsWith('eyJ')) {
+          await bot.sendMessage(
+            userId,
+            '⚠️ Неверный формат JWT токена. Пожалуйста, убедитесь, что токен начинается с "eyJ" и отправьте корректный токен.'
           );
-          break;
-          
-        case 'waiting_api_secret':
-          // Получили секрет, запрашиваем пассфразу для определенных бирж
-          userState.apiSecret = msg.text;
-          
-          // Для Paradex и некоторых других бирж может потребоваться пассфраза
-          if (userState.exchange === 'Paradex') {
-            userState.state = 'waiting_passphrase';
+          return;
+        }
+        
+        // Сохраняем JWT токен в apiKey
+        userState.apiKey = jwtToken;
+        userState.apiSecret = ''; // Пустой, не используется для JWT
+        userState.passphrase = ''; // Пустой, не используется для JWT
+        
+        // Завершаем процесс добавления
+        await finalizeKeyAddition(bot, userId, userState);
+      } else {
+        switch (userState.state) {
+          case 'waiting_api_key':
+            // Получили API ключ, запрашиваем секрет
+            userState.apiKey = msg.text;
+            userState.state = 'waiting_api_secret';
             
             await bot.editMessageText(
               `🔑 *Добавление API ключа для ${userState.exchange}*\n\n` +
-              `API Secret получен. Теперь отправьте пассфразу (или отправьте "нет", если она не требуется).`,
+              `API ключ получен. Теперь отправьте API Secret.`,
               {
                 chat_id: userId,
                 message_id: userState.messageId,
@@ -180,17 +179,42 @@ module.exports = function createApiKeysHandler(bot) {
                 }
               }
             );
-          } else {
-            // Для бирж без пассфразы сразу сохраняем ключ
+            break;
+            
+          case 'waiting_api_secret':
+            // Получили секрет, запрашиваем пассфразу для определенных бирж
+            userState.apiSecret = msg.text;
+            
+            // Для Paradex и некоторых других бирж может потребоваться пассфраза
+            if (userState.exchange === 'Paradex') {
+              userState.state = 'waiting_passphrase';
+              
+              await bot.editMessageText(
+                `🔑 *Добавление API ключа для ${userState.exchange}*\n\n` +
+                `API Secret получен. Теперь отправьте пассфразу (или отправьте "нет", если она не требуется).`,
+                {
+                  chat_id: userId,
+                  message_id: userState.messageId,
+                  parse_mode: 'Markdown',
+                  reply_markup: {
+                    inline_keyboard: [
+                      [{ text: '❌ Отмена', callback_data: 'api_keys_cancel_add' }]
+                    ]
+                  }
+                }
+              );
+            } else {
+              // Для бирж без пассфразы сразу сохраняем ключ
+              await finalizeKeyAddition(bot, userId, userState);
+            }
+            break;
+            
+          case 'waiting_passphrase':
+            // Получили пассфразу (или "нет"), сохраняем ключ
+            userState.passphrase = msg.text.toLowerCase() === 'нет' ? null : msg.text;
             await finalizeKeyAddition(bot, userId, userState);
-          }
-          break;
-          
-        case 'waiting_passphrase':
-          // Получили пассфразу (или "нет"), сохраняем ключ
-          userState.passphrase = msg.text.toLowerCase() === 'нет' ? null : msg.text;
-          await finalizeKeyAddition(bot, userId, userState);
-          break;
+            break;
+        }
       }
     } catch (error) {
       console.error('Ошибка при обработке API ключей:', error);

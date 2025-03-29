@@ -106,6 +106,56 @@ async function startKeyAddition(bot, userId, messageId, exchange) {
 }
 
 /**
+ * Начинает процесс добавления JWT токена для Paradex
+ */
+async function startParadexKeyAddition(bot, userId, messageId) {
+  try {
+    // Устанавливаем состояние диалога
+    userStates.set(userId, {
+      state: 'waiting_paradex_jwt',
+      exchange: 'Paradex',
+      messageId: messageId
+    });
+    
+    // Отправляем сообщение с инструкцией
+    await bot.editMessageText(
+      `🔑 *Добавление JWT токена для Paradex*\n\n` +
+      `Paradex использует JWT токен для аутентификации.\n\n` + 
+      `Пожалуйста, отправьте ваш JWT токен (он должен начинаться с 'eyJ...').\n\n` +
+      `*Важно:* ваш токен будет автоматически удален для безопасности.`,
+      {
+        chat_id: userId,
+        message_id: messageId,
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '❌ Отмена', callback_data: 'api_keys_cancel_add' }]
+          ]
+        }
+      }
+    );
+  } catch (error) {
+    console.error('Ошибка при начале добавления токена Paradex:', error);
+    userStates.delete(userId);
+    
+    await bot.editMessageText(
+      `🔑 *Добавление JWT токена*\n\n` +
+      `⚠️ Произошла ошибка. Пожалуйста, попробуйте позже.`,
+      {
+        chat_id: userId,
+        message_id: messageId,
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '« Назад', callback_data: `api_keys_paradex` }]
+          ]
+        }
+      }
+    );
+  }
+}
+
+/**
  * Запрашивает подтверждение удаления ключа
  */
 async function confirmKeyDeletion(bot, userId, messageId, exchange) {
@@ -249,6 +299,7 @@ async function finalizeKeyAddition(bot, userId, userState) {
 module.exports = {
   handleExchangeKeys,
   startKeyAddition,
+  startParadexKeyAddition,
   confirmKeyDeletion,
   deleteApiKey,
   finalizeKeyAddition

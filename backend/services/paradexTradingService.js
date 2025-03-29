@@ -1,13 +1,10 @@
 // services/paradexTradingService.js
-const axios = require('axios');
-const crypto = require('crypto');
-const config = require('../config/config');
 const db = require('../config/db');
 const { decryptApiKey } = require('../bot/handlers/apiKeys/crypto');
 
 class ParadexTradingService {
   constructor() {
-    this.baseUrl = config.api.paradex.baseUrl;
+    // Конструктор без baseUrl, SDK сам это обрабатывает
   }
 
   async getApiCredentials(userId) {
@@ -26,24 +23,40 @@ class ParadexTradingService {
         throw new Error('API ключи для Paradex не найдены');
       }
       
-      const { api_key, api_secret, passphrase } = result.rows[0];
+      const { api_key } = result.rows[0];
       
       return {
-        apiKey: decryptApiKey(api_key),
-        apiSecret: decryptApiKey(api_secret),
-        passphrase: passphrase ? decryptApiKey(passphrase) : null
+        jwt: decryptApiKey(api_key), // JWT токен хранится в поле api_key
       };
     } catch (error) {
-      console.error('Ошибка при получении API ключей:', error);
+      console.error('Ошибка при получении JWT токена:', error);
+      throw error;
+    }
+  }
+
+  async getClient(userId) {
+    try {
+      const credentials = await this.getApiCredentials(userId);
+      
+      // Динамический импорт ES модуля
+      const { ParadexClient } = await import('@paradex/sdk');
+      
+      // Создаем клиент с использованием SDK и JWT токена
+      return new ParadexClient({
+        jwt: credentials.jwt, 
+        // Можно добавить дополнительные опции, если необходимо
+      });
+    } catch (error) {
+      console.error('Ошибка при создании клиента Paradex:', error);
       throw error;
     }
   }
 
   async openPosition(userId, market, side, size, price = null, reduceOnly = false) {
     try {
-      const credentials = await this.getApiCredentials(userId);
+      const client = await this.getClient(userId);
       
-      // Формируем параметры ордера
+      // Формируем параметры ордера в соответствии с API Paradex
       const orderParams = {
         market,
         side: side.toUpperCase(), // 'BUY' или 'SELL'
@@ -56,32 +69,10 @@ class ParadexTradingService {
         orderParams.price = price.toString();
       }
       
-      // Текущее время в миллисекундах
-      const timestamp = Date.now().toString();
+      // Создаем ордер через SDK
+      const order = await client.createOrder(orderParams);
       
-      // Формируем строку для подписи
-      const path = '/v1/orders';
-      const body = JSON.stringify(orderParams);
-      const message = timestamp + 'POST' + path + body;
-      
-      // Создаем подпись с помощью HMAC-SHA256
-      const signature = crypto
-        .createHmac('sha256', credentials.apiSecret)
-        .update(message)
-        .digest('hex');
-      
-      // Выполняем запрос к API
-      const response = await axios.post(`${this.baseUrl}/orders`, orderParams, {
-        headers: {
-          'PARADEX-API-KEY': credentials.apiKey,
-          'PARADEX-TIMESTAMP': timestamp,
-          'PARADEX-SIGNATURE': signature,
-          'PARADEX-PASSPHRASE': credentials.passphrase,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      return response.data;
+      return order;
     } catch (error) {
       console.error('Ошибка при открытии позиции на Paradex:', error);
       throw error;
@@ -90,6 +81,8 @@ class ParadexTradingService {
 
   async closePosition(userId, market, size = null) {
     try {
+      const client = await this.getClient(userId);
+      
       // Если размер не указан, закрываем всю позицию
       if (!size) {
         const position = await this.getPosition(userId, market);
@@ -101,8 +94,14 @@ class ParadexTradingService {
         const side = position.size > 0 ? 'SELL' : 'BUY';
         size = Math.abs(position.size);
         
-        // Закрываем позицию
-        return await this.openPosition(userId, market, side, size, null, true);
+        // Создаем ордер для закрытия позиции
+        return await client.createOrder({
+          market,
+          side,
+          size: size.toString(),
+          orderType: 'MARKET',
+          reduceOnly: true
+        });
       } else {
         // Если размер указан, нужно определить направление позиции
         const position = await this.getPosition(userId, market);
@@ -111,7 +110,15 @@ class ParadexTradingService {
         }
         
         const side = position.size > 0 ? 'SELL' : 'BUY';
-        return await this.openPosition(userId, market, side, size, null, true);
+        
+        // Создаем ордер для частичного закрытия позиции
+        return await client.createOrder({
+          market,
+          side,
+          size: size.toString(),
+          orderType: 'MARKET',
+          reduceOnly: true
+        });
       }
     } catch (error) {
       console.error('Ошибка при закрытии позиции на Paradex:', error);
@@ -121,39 +128,27 @@ class ParadexTradingService {
 
   async getPosition(userId, market) {
     try {
-      const credentials = await this.getApiCredentials(userId);
+      const client = await this.getClient(userId);
       
-      // Текущее время в миллисекундах
-      const timestamp = Date.now().toString();
+      // Получаем позиции через SDK
+      const positions = await client.getPositions();
       
-      // Формируем строку для подписи
-      const path = `/v1/positions?market=${market}`;
-      const message = timestamp + 'GET' + path;
-      
-      // Создаем подпись с помощью HMAC-SHA256
-      const signature = crypto
-        .createHmac('sha256', credentials.apiSecret)
-        .update(message)
-        .digest('hex');
-      
-      // Выполняем запрос к API
-      const response = await axios.get(`${this.baseUrl}/positions`, {
-        params: { market },
-        headers: {
-          'PARADEX-API-KEY': credentials.apiKey,
-          'PARADEX-TIMESTAMP': timestamp,
-          'PARADEX-SIGNATURE': signature,
-          'PARADEX-PASSPHRASE': credentials.passphrase
-        }
-      });
-      
-      if (!response.data || !response.data.results || response.data.results.length === 0) {
-        return null;
-      }
-      
-      return response.data.results.find(pos => pos.market === market) || null;
+      // Находим позицию для указанного рынка
+      return positions.find(pos => pos.market === market) || null;
     } catch (error) {
       console.error('Ошибка при получении позиции с Paradex:', error);
+      throw error;
+    }
+  }
+
+  async getAllPositions(userId) {
+    try {
+      const client = await this.getClient(userId);
+      
+      // Получаем все позиции через SDK
+      return await client.getPositions();
+    } catch (error) {
+      console.error('Ошибка при получении позиций с Paradex:', error);
       throw error;
     }
   }
